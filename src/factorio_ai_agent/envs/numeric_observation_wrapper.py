@@ -61,3 +61,7 @@ class NumericObservationWrapper(gym.ObservationWrapper[Observation, np.ndarray, 
     def unwrapped_env(self) -> Any:
         """Return the underlying environment for helper methods like action masks."""
         return self.env
+
+    def action_masks(self) -> np.ndarray:
+        """Return the current valid-action mask from the wrapped environment."""
+        return self.env.action_masks()  # type: ignore[attr-defined]

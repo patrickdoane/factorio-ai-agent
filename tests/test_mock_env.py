@@ -68,6 +68,61 @@ def test_action_names_and_valid_action_mask_are_exposed() -> None:
     assert mask[Action.WAIT.value]
     assert not mask[Action.CRAFT_STONE_FURNACE.value]
 
+    np_mask = env.action_masks()
+
+    assert np_mask.dtype == bool
+    assert np_mask.tolist() == mask
+
+
+def test_action_mask_allows_crafting_after_resources_are_available() -> None:
+    env = MockFactorioEnv()
+    env.reset()
+
+    for _ in range(5):
+        env.step(Action.MINE_STONE.value)
+
+    mask = env.valid_action_mask()
+
+    assert mask[Action.CRAFT_STONE_FURNACE.value]
+    assert not mask[Action.CRAFT_BURNER_MINING_DRILL.value]
+
+    env.step(Action.CRAFT_STONE_FURNACE.value)
+    for _ in range(4):
+        env.step(Action.MINE_IRON_ORE.value)
+    for _ in range(3):
+        env.step(Action.MINE_STONE.value)
+
+    mask = env.valid_action_mask()
+
+    assert mask[Action.CRAFT_BURNER_MINING_DRILL.value]
+
+
+def test_action_mask_allows_placement_and_fueling_when_ready() -> None:
+    env = MockFactorioEnv()
+    env.reset()
+
+    for action in [
+        *[Action.MINE_STONE.value] * 5,
+        Action.CRAFT_STONE_FURNACE.value,
+        *[Action.MINE_IRON_ORE.value] * 4,
+        *[Action.MINE_STONE.value] * 3,
+        Action.CRAFT_BURNER_MINING_DRILL.value,
+    ]:
+        env.step(action)
+
+    mask = env.valid_action_mask()
+
+    assert mask[Action.PLACE_STONE_FURNACE.value]
+    assert mask[Action.PLACE_BURNER_MINING_DRILL.value]
+    assert not mask[Action.INSERT_COAL_FUEL.value]
+
+    env.step(Action.PLACE_BURNER_MINING_DRILL.value)
+    env.step(Action.MINE_COAL.value)
+
+    mask = env.valid_action_mask()
+
+    assert mask[Action.INSERT_COAL_FUEL.value]
+
 
 def test_unknown_action_name_raises_value_error() -> None:
     env = MockFactorioEnv()

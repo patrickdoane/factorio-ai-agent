@@ -35,3 +35,16 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         1.0,
         1.0,
     ]
+
+
+def test_numeric_wrapper_exposes_action_masks() -> None:
+    env = NumericObservationWrapper(MockFactorioEnv())
+    env.reset()
+
+    mask = env.action_masks()
+
+    assert mask.dtype == bool
+    assert mask.shape == (env.action_space.n,)
+    assert mask[Action.MINE_STONE.value]
+    assert mask[Action.WAIT.value]
+    assert not mask[Action.CRAFT_STONE_FURNACE.value]

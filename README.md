@@ -109,6 +109,11 @@ mock dictionary observation into a fixed numeric vector and drops the string
 objective. This keeps the default environment readable while giving PPO a simple
 `Box` observation space.
 
+The mock environment and numeric wrapper also expose `action_masks()`, returning
+a NumPy boolean mask of valid discrete actions. Standard Stable-Baselines3 PPO
+does not consume this mask directly; it is intended for future `sb3-contrib`
+MaskablePPO support or custom training code.
+
 ## Roadmap
 
 1. Expand the mock environment with positions, entity orientation, and recipes.

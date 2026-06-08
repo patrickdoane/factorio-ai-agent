@@ -7,6 +7,7 @@ from enum import IntEnum
 from typing import Any
 
 import gymnasium as gym
+import numpy as np
 from gymnasium import spaces
 
 
@@ -166,6 +167,10 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         """Return a boolean mask of actions that are currently valid."""
         valid = set(self.valid_actions())
         return [action.value in valid for action in Action]
+
+    def action_masks(self) -> np.ndarray:
+        """Return a NumPy action mask compatible with mask-aware RL libraries."""
+        return np.array(self.valid_action_mask(), dtype=np.bool_)
 
     def action_names(self) -> dict[int, str]:
         """Return action ids mapped to stable action names."""
