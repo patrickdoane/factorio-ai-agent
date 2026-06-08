@@ -6,7 +6,8 @@ The project starts with a lightweight mock environment so agents can be built,
 tested, and trained locally before any real Factorio headless server integration
 exists. The first task is intentionally tiny: mine resources, craft and place a
 stone furnace and burner mining drill, fuel the setup, and produce the first iron
-plate.
+plate. The mock environment can also target multiple iron plates using simple
+wait-based miner and furnace production timing.
 
 ## Goals
 
@@ -47,7 +48,7 @@ factorio-ai run-random --episodes 3 --max-steps 100 --seed 42 --quiet
 Run the scripted burner-miner agent:
 
 ```bash
-factorio-ai run-scripted --max-steps 50
+factorio-ai run-scripted --max-steps 80 --target-iron-plates 3
 ```
 
 Run the PPO training entry point:
@@ -64,7 +65,7 @@ stable Python 3.11+ runtime before importing Stable-Baselines3/Torch.
 Compare baselines over multiple episodes:
 
 ```bash
-factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42
+factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42 --target-iron-plates 3
 ```
 
 ## Mock Task
@@ -76,14 +77,20 @@ factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42
 - Craft a burner mining drill.
 - Place the furnace and burner miner.
 - Insert coal fuel.
-- Wait for the first iron plate to be produced.
+- Wait for the miner and furnace production timers to produce iron plates.
 
 The observation is a dictionary containing:
 
 - `inventory`
 - `placed_entities`
+- `production_state`
 - `step_count`
 - `current_objective`
+
+`production_state` tracks miner progress, furnace progress, and the target iron
+plate count for the episode. This is still a simplified model: it captures the
+need to wait for production without modeling positions, belts, inserters, or
+furnace fuel separately yet.
 
 For reinforcement learning experiments, `NumericObservationWrapper` converts the
 mock dictionary observation into a fixed numeric vector and drops the string

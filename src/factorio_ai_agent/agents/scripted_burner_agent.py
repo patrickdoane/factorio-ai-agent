@@ -9,9 +9,11 @@ class ScriptedBurnerAgent:
     """Follow a fixed resource, craft, place, fuel, and wait sequence."""
 
     def act(self, observation: Observation) -> int:
-        """Return the next action needed to produce the first iron plate."""
+        """Return the next action needed to produce the target iron plates."""
         inventory = observation["inventory"]
         placed = observation["placed_entities"]
+        production = observation["production_state"]
+        target_iron_plates = production["target_iron_plates"]
 
         if inventory["stone_furnace"] < 1 and placed["stone_furnace"] < 1:
             if inventory["stone"] < 5:
@@ -30,6 +32,9 @@ class ScriptedBurnerAgent:
 
         if placed["burner_mining_drill"] < 1:
             return Action.PLACE_BURNER_MINING_DRILL.value
+
+        if inventory["iron_plate"] >= target_iron_plates:
+            return Action.WAIT.value
 
         if placed["coal_fuel_inserted"] < 1:
             if inventory["coal"] < 1:

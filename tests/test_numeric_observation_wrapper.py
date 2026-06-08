@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (10,)
+    assert observation.shape == (13,)
     assert env.observation_space.contains(observation)
 
 
@@ -20,4 +20,18 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
 
     observation, _, _, _, _ = env.step(Action.MINE_STONE.value)
 
-    assert observation.tolist() == [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    assert observation.tolist() == [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+    ]

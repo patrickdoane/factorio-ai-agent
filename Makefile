@@ -13,13 +13,13 @@ test:
 	$(VENV_PYTHON) -m pytest
 
 run-scripted:
-	$(VENV)/bin/factorio-ai run-scripted
+	$(VENV)/bin/factorio-ai run-scripted --target-iron-plates 3 --max-steps 80
 
 run-random:
 	$(VENV)/bin/factorio-ai run-random
 
 evaluate:
-	$(VENV)/bin/factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42
+	$(VENV)/bin/factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42 --target-iron-plates 3
 
 train-ppo:
 	$(VENV)/bin/factorio-ai train-ppo

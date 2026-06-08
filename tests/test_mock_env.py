@@ -13,6 +13,9 @@ def test_reset_returns_expected_observation_shape() -> None:
     assert observation["inventory"]["coal"] == 0
     assert observation["inventory"]["stone"] == 0
     assert observation["placed_entities"]["stone_furnace"] == 0
+    assert observation["production_state"]["miner_progress"] == 0
+    assert observation["production_state"]["furnace_progress"] == 0
+    assert observation["production_state"]["target_iron_plates"] == 1
     assert observation["step_count"] == 0
     assert observation["current_objective"] == "Mine resources"
 
@@ -87,6 +90,8 @@ def test_manual_sequence_produces_first_iron_plate() -> None:
         Action.PLACE_BURNER_MINING_DRILL.value,
         Action.MINE_COAL.value,
         Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
     ]
 
     reward = 0.0
@@ -99,3 +104,46 @@ def test_manual_sequence_produces_first_iron_plate() -> None:
     assert reward > 9.0
     assert terminated
     assert not truncated
+
+
+def test_wait_advances_miner_and_furnace_production_timing() -> None:
+    env = MockFactorioEnv()
+    observation, _ = env.reset()
+
+    actions = [
+        *[Action.MINE_STONE.value] * 5,
+        Action.CRAFT_STONE_FURNACE.value,
+        *[Action.MINE_IRON_ORE.value] * 4,
+        *[Action.MINE_STONE.value] * 3,
+        Action.CRAFT_BURNER_MINING_DRILL.value,
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+    ]
+    for action in actions:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["iron_plate"] == 0
+    assert not terminated
+    assert not truncated
+
+    observation, reward, terminated, truncated, info = env.step(Action.WAIT.value)
+
+    assert observation["production_state"]["miner_progress"] == 1
+    assert observation["production_state"]["furnace_progress"] == 1
+    assert observation["inventory"]["iron_plate"] == 0
+    assert reward == pytest.approx(-0.01)
+    assert not terminated
+    assert "produced_iron_plate" not in info
+
+    observation, reward, terminated, truncated, info = env.step(Action.WAIT.value)
+
+    assert observation["inventory"]["iron_plate"] == 1
+    assert observation["placed_entities"]["coal_fuel_inserted"] == 0
+    assert observation["production_state"]["miner_progress"] == 0
+    assert observation["production_state"]["furnace_progress"] == 0
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["produced_iron_plate"] is True

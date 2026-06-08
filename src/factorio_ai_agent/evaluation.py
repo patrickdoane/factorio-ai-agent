@@ -20,7 +20,13 @@ class EpisodeResult:
     total_reward: float
     terminated: bool
     truncated: bool
-    final_objective: str
+    goal: str
+    status: str
+
+    @property
+    def final_objective(self) -> str:
+        """Backward-compatible alias for the final status label."""
+        return self.status
 
 
 def run_episode(
@@ -31,9 +37,10 @@ def run_episode(
     agent_name: str = "agent",
     episode_number: int = 1,
     seed: int | None = None,
+    target_iron_plates: int = 1,
 ) -> EpisodeResult:
     """Run one mock episode using a caller-provided action selector."""
-    env = MockFactorioEnv(max_steps=max_steps)
+    env = MockFactorioEnv(max_steps=max_steps, target_iron_plates=target_iron_plates)
     observation, _ = env.reset(seed=seed)
     terminated = False
     truncated = False
@@ -55,7 +62,8 @@ def run_episode(
         total_reward=total_reward,
         terminated=terminated,
         truncated=truncated,
-        final_objective=observation["current_objective"],
+        goal=_format_goal(target_iron_plates),
+        status=observation["current_objective"],
     )
     print(_format_result(result, episode_number))
     return result
@@ -92,6 +100,7 @@ def _format_episode_header(agent_name: str, episode_number: int) -> str:
 def _format_step(env: MockFactorioEnv, reward: float, info: dict[str, object]) -> str:
     inventory = _format_counts(env.inventory)
     placed = _format_counts(env.placed_entities)
+    production = _format_counts(env.production_state)
     return (
         f"\nStep {env.step_count:02d}\n"
         f"Action: {info['action']}\n"
@@ -99,7 +108,8 @@ def _format_step(env: MockFactorioEnv, reward: float, info: dict[str, object]) -
         f"Reward: {reward:.2f}\n"
         f"Objective: {env.current_objective}\n"
         f"Inventory: {inventory}\n"
-        f"Placed: {placed}"
+        f"Placed: {placed}\n"
+        f"Production: {production}"
     )
 
 
@@ -111,9 +121,16 @@ def _format_result(result: EpisodeResult, episode_number: int) -> str:
         f"Truncated: {result.truncated}\n"
         f"Steps: {result.steps}\n"
         f"Total reward: {result.total_reward:.2f}\n"
-        f"Final objective: {result.final_objective}"
+        f"Goal: {result.goal}\n"
+        f"Status: {result.status}"
     )
 
 
 def _format_counts(values: dict[str, int]) -> str:
     return " ".join(f"{key}={value}" for key, value in values.items())
+
+
+def _format_goal(target_iron_plates: int) -> str:
+    if target_iron_plates == 1:
+        return "Produce 1 iron plate"
+    return f"Produce {target_iron_plates} iron plates"

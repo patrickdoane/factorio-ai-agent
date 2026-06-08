@@ -24,6 +24,11 @@ PLACED_ENTITY_KEYS = (
     "burner_mining_drill",
     "coal_fuel_inserted",
 )
+PRODUCTION_STATE_KEYS = (
+    "miner_progress",
+    "furnace_progress",
+    "target_iron_plates",
+)
 
 
 class NumericObservationWrapper(gym.ObservationWrapper[Observation, np.ndarray, int]):
@@ -35,7 +40,7 @@ class NumericObservationWrapper(gym.ObservationWrapper[Observation, np.ndarray, 
 
     def __init__(self, env: gym.Env[Observation, int]) -> None:
         super().__init__(env)
-        vector_size = len(INVENTORY_KEYS) + len(PLACED_ENTITY_KEYS) + 1
+        vector_size = len(INVENTORY_KEYS) + len(PLACED_ENTITY_KEYS) + len(PRODUCTION_STATE_KEYS) + 1
         self.observation_space = spaces.Box(
             low=0.0,
             high=100.0,
@@ -48,6 +53,7 @@ class NumericObservationWrapper(gym.ObservationWrapper[Observation, np.ndarray, 
         values: list[float] = []
         values.extend(float(observation["inventory"][key]) for key in INVENTORY_KEYS)
         values.extend(float(observation["placed_entities"][key]) for key in PLACED_ENTITY_KEYS)
+        values.extend(float(observation["production_state"][key]) for key in PRODUCTION_STATE_KEYS)
         values.append(float(observation["step_count"]))
         return np.array(values, dtype=np.float32)
 

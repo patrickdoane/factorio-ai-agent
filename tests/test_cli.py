@@ -29,10 +29,28 @@ def test_run_scripted_verbose_output_has_readable_step_blocks(capsys) -> None:  
     assert "Step 01" in output
     assert "Action: MINE_STONE" in output
     assert "Inventory: iron_ore=0 coal=0 stone=1" in output
+    assert "Production: miner_progress=0 furnace_progress=0 target_iron_plates=1" in output
+
+
+def test_run_scripted_supports_target_iron_plates(capsys) -> None:  # type: ignore[no-untyped-def]
+    run_scripted(max_steps=80, quiet=True, target_iron_plates=3)
+
+    output = capsys.readouterr().out
+
+    assert "Success: True" in output
+    assert "Goal: Produce 3 iron plates" in output
+    assert "Status: Task complete" in output
 
 
 def test_evaluate_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
-    run_evaluate(agent_name="both", episodes=1, max_steps=50, seed=3, verbose=False)
+    run_evaluate(
+        agent_name="both",
+        episodes=1,
+        max_steps=80,
+        seed=3,
+        verbose=False,
+        target_iron_plates=2,
+    )
 
     output = capsys.readouterr().out
 

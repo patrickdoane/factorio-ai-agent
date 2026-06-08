@@ -15,6 +15,7 @@ def run_random(
     episodes: int = 1,
     quiet: bool = False,
     seed: int | None = None,
+    target_iron_plates: int = 1,
 ) -> None:
     """Run the random agent in the mock environment."""
     agent = RandomAgent(seed=seed)
@@ -29,6 +30,7 @@ def run_random(
                 agent_name="random",
                 episode_number=episode_number,
                 seed=seed,
+                target_iron_plates=target_iron_plates,
             )
         )
 
@@ -36,7 +38,11 @@ def run_random(
         print(format_summary("Random", summarize_results(results)))
 
 
-def run_scripted(max_steps: int = 100, quiet: bool = False) -> None:
+def run_scripted(
+    max_steps: int = 100,
+    quiet: bool = False,
+    target_iron_plates: int = 1,
+) -> None:
     """Run the scripted burner-miner agent in the mock environment."""
     agent = ScriptedBurnerAgent()
     run_episode(
@@ -45,6 +51,7 @@ def run_scripted(max_steps: int = 100, quiet: bool = False) -> None:
         quiet=quiet,
         agent_name="scripted",
         episode_number=1,
+        target_iron_plates=target_iron_plates,
     )
 
 
@@ -54,6 +61,7 @@ def run_evaluate(
     max_steps: int = 100,
     seed: int | None = None,
     verbose: bool = False,
+    target_iron_plates: int = 1,
 ) -> None:
     """Evaluate one or both baseline agents over multiple episodes."""
     selected_agents = ["scripted", "random"] if agent_name == "both" else [agent_name]
@@ -74,6 +82,7 @@ def run_evaluate(
                 agent_name=selected_agent,
                 episode_number=episode_number,
                 seed=seed,
+                target_iron_plates=target_iron_plates,
             )
             for episode_number in range(1, episodes + 1)
         ]
@@ -91,12 +100,14 @@ def build_parser() -> argparse.ArgumentParser:
     random_parser.add_argument("--max-steps", type=int, default=100)
     random_parser.add_argument("--episodes", type=int, default=1)
     random_parser.add_argument("--seed", type=int, default=None)
+    random_parser.add_argument("--target-iron-plates", type=int, default=1)
     random_parser.add_argument("--quiet", action="store_true")
 
     scripted_parser = subparsers.add_parser(
         "run-scripted", help="Run the scripted burner-miner agent."
     )
     scripted_parser.add_argument("--max-steps", type=int, default=100)
+    scripted_parser.add_argument("--target-iron-plates", type=int, default=1)
     scripted_parser.add_argument("--quiet", action="store_true")
 
     evaluate_parser = subparsers.add_parser(
@@ -108,6 +119,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--episodes", type=int, default=10)
     evaluate_parser.add_argument("--max-steps", type=int, default=100)
     evaluate_parser.add_argument("--seed", type=int, default=None)
+    evaluate_parser.add_argument("--target-iron-plates", type=int, default=1)
     evaluate_parser.add_argument("--verbose", action="store_true")
 
     train_parser = subparsers.add_parser(
@@ -129,9 +141,14 @@ def main() -> None:
             episodes=args.episodes,
             quiet=args.quiet,
             seed=args.seed,
+            target_iron_plates=args.target_iron_plates,
         )
     elif args.command == "run-scripted":
-        run_scripted(max_steps=args.max_steps, quiet=args.quiet)
+        run_scripted(
+            max_steps=args.max_steps,
+            quiet=args.quiet,
+            target_iron_plates=args.target_iron_plates,
+        )
     elif args.command == "evaluate":
         run_evaluate(
             agent_name=args.agent,
@@ -139,6 +156,7 @@ def main() -> None:
             max_steps=args.max_steps,
             seed=args.seed,
             verbose=args.verbose,
+            target_iron_plates=args.target_iron_plates,
         )
     elif args.command == "train-ppo":
         train_ppo(total_timesteps=args.total_timesteps, device=args.device)
