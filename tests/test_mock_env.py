@@ -51,6 +51,28 @@ def test_truncates_when_max_steps_is_reached_without_success() -> None:
     assert truncated
 
 
+def test_action_names_and_valid_action_mask_are_exposed() -> None:
+    env = MockFactorioEnv()
+    env.reset()
+
+    assert env.action_name(Action.MINE_STONE.value) == "MINE_STONE"
+    assert env.action_names()[Action.WAIT.value] == "WAIT"
+
+    mask = env.valid_action_mask()
+
+    assert len(mask) == env.action_space.n
+    assert mask[Action.MINE_STONE.value]
+    assert mask[Action.WAIT.value]
+    assert not mask[Action.CRAFT_STONE_FURNACE.value]
+
+
+def test_unknown_action_name_raises_value_error() -> None:
+    env = MockFactorioEnv()
+
+    with pytest.raises(ValueError, match="Unknown action"):
+        env.action_name(999)
+
+
 def test_manual_sequence_produces_first_iron_plate() -> None:
     env = MockFactorioEnv()
     observation, _ = env.reset()

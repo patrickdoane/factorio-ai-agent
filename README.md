@@ -41,13 +41,13 @@ pip install -e .[dev,rl]
 Run a random agent:
 
 ```bash
-factorio-ai run-random
+factorio-ai run-random --episodes 3 --max-steps 100 --quiet
 ```
 
 Run the scripted burner-miner agent:
 
 ```bash
-factorio-ai run-scripted
+factorio-ai run-scripted --max-steps 50
 ```
 
 Run the PPO training entry point:
@@ -95,6 +95,9 @@ With `make`:
 make test
 make run-scripted
 ```
+
+The CLI supports `--quiet` for summary-only runs. `run-random` also supports
+`--episodes` for quick baseline evaluation.
 
 This repository is intended to use a lightweight feature branch workflow for
 rapid local iteration.

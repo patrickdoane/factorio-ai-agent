@@ -98,7 +98,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
         """Apply one action and return the Gymnasium step tuple."""
-        if action not in [item.value for item in Action]:
+        if action not in self.action_names():
             raise ValueError(f"Unknown action: {action}")
 
         self.step_count += 1
@@ -138,6 +138,22 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         if self.inventory["coal"] >= 1 and self.placed_entities["burner_mining_drill"] >= 1:
             valid.append(Action.INSERT_COAL_FUEL)
         return [action.value for action in valid]
+
+    def valid_action_mask(self) -> list[bool]:
+        """Return a boolean mask of actions that are currently valid."""
+        valid = set(self.valid_actions())
+        return [action.value in valid for action in Action]
+
+    def action_names(self) -> dict[int, str]:
+        """Return action ids mapped to stable action names."""
+        return {action.value: action.name for action in Action}
+
+    def action_name(self, action: int) -> str:
+        """Return the stable name for a discrete action id."""
+        try:
+            return Action(action).name
+        except ValueError as exc:
+            raise ValueError(f"Unknown action: {action}") from exc
 
     def render(self) -> str:
         """Return a compact text rendering of the current state."""

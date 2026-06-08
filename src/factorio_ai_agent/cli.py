@@ -6,40 +6,40 @@ import argparse
 
 from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
-from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv
+from factorio_ai_agent.evaluation import format_summary, run_episode, summarize_results
 from factorio_ai_agent.training.train_ppo import train_ppo
 
 
-def run_random(max_steps: int = 100) -> None:
+def run_random(max_steps: int = 100, episodes: int = 1, quiet: bool = False) -> None:
     """Run the random agent in the mock environment."""
-    env = MockFactorioEnv(max_steps=max_steps)
     agent = RandomAgent()
-    observation, _ = env.reset()
-    terminated = False
-    truncated = False
+    results = []
 
-    while not terminated and not truncated:
-        action = agent.act(env)
-        observation, reward, terminated, truncated, info = env.step(action)
-        print(f"{env.render()} reward={reward:.2f} info={info}")
+    for episode_number in range(1, episodes + 1):
+        results.append(
+            run_episode(
+                lambda env, _observation: agent.act(env),
+                max_steps=max_steps,
+                quiet=quiet,
+                agent_name="random",
+                episode_number=episode_number,
+            )
+        )
 
-    print(f"Finished random run: terminated={terminated} truncated={truncated}")
+    if episodes > 1:
+        print(format_summary("Random", summarize_results(results)))
 
 
-def run_scripted(max_steps: int = 100) -> None:
+def run_scripted(max_steps: int = 100, quiet: bool = False) -> None:
     """Run the scripted burner-miner agent in the mock environment."""
-    env = MockFactorioEnv(max_steps=max_steps)
     agent = ScriptedBurnerAgent()
-    observation, _ = env.reset()
-    terminated = False
-    truncated = False
-
-    while not terminated and not truncated:
-        action = agent.act(observation)
-        observation, reward, terminated, truncated, info = env.step(action)
-        print(f"{env.render()} reward={reward:.2f} info={info}")
-
-    print(f"Finished scripted run: terminated={terminated} truncated={truncated}")
+    run_episode(
+        lambda _env, observation: agent.act(observation),
+        max_steps=max_steps,
+        quiet=quiet,
+        agent_name="scripted",
+        episode_number=1,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,8 +47,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="factorio-ai")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser("run-random", help="Run a random valid-action baseline.")
-    subparsers.add_parser("run-scripted", help="Run the scripted burner-miner agent.")
+    random_parser = subparsers.add_parser(
+        "run-random", help="Run a random valid-action baseline."
+    )
+    random_parser.add_argument("--max-steps", type=int, default=100)
+    random_parser.add_argument("--episodes", type=int, default=1)
+    random_parser.add_argument("--quiet", action="store_true")
+
+    scripted_parser = subparsers.add_parser(
+        "run-scripted", help="Run the scripted burner-miner agent."
+    )
+    scripted_parser.add_argument("--max-steps", type=int, default=100)
+    scripted_parser.add_argument("--quiet", action="store_true")
+
     subparsers.add_parser("train-ppo", help="Run the optional PPO training entry point.")
     return parser
 
@@ -59,9 +70,9 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "run-random":
-        run_random()
+        run_random(max_steps=args.max_steps, episodes=args.episodes, quiet=args.quiet)
     elif args.command == "run-scripted":
-        run_scripted()
+        run_scripted(max_steps=args.max_steps, quiet=args.quiet)
     elif args.command == "train-ppo":
         train_ppo()
     else:
