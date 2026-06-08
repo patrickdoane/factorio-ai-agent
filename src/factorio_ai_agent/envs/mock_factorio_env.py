@@ -1,0 +1,225 @@
+"""A tiny deterministic Factorio-like Gymnasium environment."""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from enum import IntEnum
+from typing import Any
+
+import gymnasium as gym
+from gymnasium import spaces
+
+
+class Action(IntEnum):
+    """Discrete actions available in the mock task."""
+
+    MINE_IRON_ORE = 0
+    MINE_COAL = 1
+    MINE_STONE = 2
+    CRAFT_STONE_FURNACE = 3
+    CRAFT_BURNER_MINING_DRILL = 4
+    PLACE_STONE_FURNACE = 5
+    PLACE_BURNER_MINING_DRILL = 6
+    INSERT_COAL_FUEL = 7
+    WAIT = 8
+
+
+Inventory = dict[str, int]
+PlacedEntities = dict[str, int]
+Observation = dict[str, Any]
+
+
+class MockFactorioEnv(gym.Env[Observation, int]):
+    """Simulate a tiny resource-to-first-iron-plate Factorio task."""
+
+    metadata = {"render_modes": ["ansi"]}
+
+    max_steps: int
+
+    inventory: Inventory
+
+    placed_entities: PlacedEntities
+    step_count: int
+    current_objective: str
+
+    def __init__(self, max_steps: int = 100) -> None:
+        super().__init__()
+        self.max_steps = max_steps
+        self.action_space = spaces.Discrete(len(Action))
+        self.observation_space = spaces.Dict(
+            {
+                "inventory": spaces.Dict(
+                    {
+                        "iron_ore": spaces.Discrete(100),
+                        "coal": spaces.Discrete(100),
+                        "stone": spaces.Discrete(100),
+                        "stone_furnace": spaces.Discrete(10),
+                        "burner_mining_drill": spaces.Discrete(10),
+                        "iron_plate": spaces.Discrete(100),
+                    }
+                ),
+                "placed_entities": spaces.Dict(
+                    {
+                        "stone_furnace": spaces.Discrete(10),
+                        "burner_mining_drill": spaces.Discrete(10),
+                        "coal_fuel_inserted": spaces.Discrete(10),
+                    }
+                ),
+                "step_count": spaces.Discrete(max_steps + 1),
+                "current_objective": spaces.Text(max_length=80),
+            }
+        )
+        self.reset()
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[Observation, dict[str, Any]]:
+        """Reset the task to an empty inventory and no placed entities."""
+        super().reset(seed=seed)
+        self.inventory = {
+            "iron_ore": 0,
+            "coal": 0,
+            "stone": 0,
+            "stone_furnace": 0,
+            "burner_mining_drill": 0,
+            "iron_plate": 0,
+        }
+        self.placed_entities = {
+            "stone_furnace": 0,
+            "burner_mining_drill": 0,
+            "coal_fuel_inserted": 0,
+        }
+        self.step_count = 0
+        self.current_objective = "Mine resources"
+        return self._get_obs(), {}
+
+    def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
+        """Apply one action and return the Gymnasium step tuple."""
+        if action not in [item.value for item in Action]:
+            raise ValueError(f"Unknown action: {action}")
+
+        self.step_count += 1
+        reward = -0.01
+        info: dict[str, Any] = {"action": Action(action).name, "valid_action": True}
+
+        if not self._apply_action(Action(action)):
+            reward -= 0.05
+            info["valid_action"] = False
+
+        produced_plate = self._try_produce_iron_plate()
+        if produced_plate:
+            reward += 10.0
+            info["produced_iron_plate"] = True
+
+        self.current_objective = self._objective()
+        terminated = self.inventory["iron_plate"] >= 1
+        truncated = self.step_count >= self.max_steps and not terminated
+        return self._get_obs(), reward, terminated, truncated, info
+
+    def valid_actions(self) -> list[int]:
+        """Return actions that currently have an effect, plus WAIT."""
+        valid = [
+            Action.MINE_IRON_ORE,
+            Action.MINE_COAL,
+            Action.MINE_STONE,
+            Action.WAIT,
+        ]
+        if self.inventory["stone"] >= 5:
+            valid.append(Action.CRAFT_STONE_FURNACE)
+        if self.inventory["iron_ore"] >= 3 and self.inventory["stone"] >= 3:
+            valid.append(Action.CRAFT_BURNER_MINING_DRILL)
+        if self.inventory["stone_furnace"] >= 1:
+            valid.append(Action.PLACE_STONE_FURNACE)
+        if self.inventory["burner_mining_drill"] >= 1:
+            valid.append(Action.PLACE_BURNER_MINING_DRILL)
+        if self.inventory["coal"] >= 1 and self.placed_entities["burner_mining_drill"] >= 1:
+            valid.append(Action.INSERT_COAL_FUEL)
+        return [action.value for action in valid]
+
+    def render(self) -> str:
+        """Return a compact text rendering of the current state."""
+        return (
+            f"step={self.step_count} inventory={self.inventory} "
+            f"placed={self.placed_entities} objective={self.current_objective}"
+        )
+
+    def _apply_action(self, action: Action) -> bool:
+        if action == Action.MINE_IRON_ORE:
+            self.inventory["iron_ore"] += 1
+            return True
+        if action == Action.MINE_COAL:
+            self.inventory["coal"] += 1
+            return True
+        if action == Action.MINE_STONE:
+            self.inventory["stone"] += 1
+            return True
+        if action == Action.CRAFT_STONE_FURNACE:
+            return self._craft({"stone": 5}, "stone_furnace")
+        if action == Action.CRAFT_BURNER_MINING_DRILL:
+            return self._craft({"iron_ore": 3, "stone": 3}, "burner_mining_drill")
+        if action == Action.PLACE_STONE_FURNACE:
+            return self._place("stone_furnace")
+        if action == Action.PLACE_BURNER_MINING_DRILL:
+            return self._place("burner_mining_drill")
+        if action == Action.INSERT_COAL_FUEL:
+            if self.inventory["coal"] < 1 or self.placed_entities["burner_mining_drill"] < 1:
+                return False
+            self.inventory["coal"] -= 1
+            self.placed_entities["coal_fuel_inserted"] += 1
+            return True
+        return True
+
+    def _craft(self, costs: Inventory, output: str) -> bool:
+        if any(self.inventory[item] < amount for item, amount in costs.items()):
+            return False
+        for item, amount in costs.items():
+            self.inventory[item] -= amount
+        self.inventory[output] += 1
+        return True
+
+    def _place(self, entity: str) -> bool:
+        if self.inventory[entity] < 1:
+            return False
+        self.inventory[entity] -= 1
+        self.placed_entities[entity] += 1
+        return True
+
+    def _try_produce_iron_plate(self) -> bool:
+        if self.inventory["iron_plate"] >= 1:
+            return False
+        if (
+            self.inventory["iron_ore"] >= 1
+            and self.placed_entities["stone_furnace"] >= 1
+            and self.placed_entities["burner_mining_drill"] >= 1
+            and self.placed_entities["coal_fuel_inserted"] >= 1
+        ):
+            self.inventory["iron_ore"] -= 1
+            self.inventory["iron_plate"] += 1
+            return True
+        return False
+
+    def _objective(self) -> str:
+        if self.inventory["iron_plate"] >= 1:
+            return "Task complete"
+        if self.inventory["stone_furnace"] < 1 and self.placed_entities["stone_furnace"] < 1:
+            return "Craft stone furnace"
+        if self.inventory["burner_mining_drill"] < 1 and self.placed_entities["burner_mining_drill"] < 1:
+            return "Craft burner mining drill"
+        if self.placed_entities["stone_furnace"] < 1:
+            return "Place stone furnace"
+        if self.placed_entities["burner_mining_drill"] < 1:
+            return "Place burner mining drill"
+        if self.placed_entities["coal_fuel_inserted"] < 1:
+            return "Fuel burner miner"
+        return "Produce iron plate"
+
+    def _get_obs(self) -> Observation:
+        return {
+            "inventory": deepcopy(self.inventory),
+            "placed_entities": deepcopy(self.placed_entities),
+            "step_count": self.step_count,
+            "current_objective": self.current_objective,
+        }
