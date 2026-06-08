@@ -30,10 +30,11 @@ def run_episode(
     quiet: bool = False,
     agent_name: str = "agent",
     episode_number: int = 1,
+    seed: int | None = None,
 ) -> EpisodeResult:
     """Run one mock episode using a caller-provided action selector."""
     env = MockFactorioEnv(max_steps=max_steps)
-    observation, _ = env.reset()
+    observation, _ = env.reset(seed=seed)
     terminated = False
     truncated = False
     total_reward = 0.0

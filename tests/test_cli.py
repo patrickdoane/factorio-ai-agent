@@ -1,4 +1,4 @@
-from factorio_ai_agent.cli import run_random, run_scripted
+from factorio_ai_agent.cli import run_evaluate, run_random, run_scripted
 
 
 def test_run_scripted_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -12,7 +12,7 @@ def test_run_scripted_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
 
 
 def test_run_random_multiple_episodes_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
-    run_random(max_steps=1, episodes=2, quiet=True)
+    run_random(max_steps=1, episodes=2, quiet=True, seed=7)
 
     output = capsys.readouterr().out
 
@@ -29,3 +29,13 @@ def test_run_scripted_verbose_output_has_readable_step_blocks(capsys) -> None:  
     assert "Step 01" in output
     assert "Action: MINE_STONE" in output
     assert "Inventory: iron_ore=0 coal=0 stone=1" in output
+
+
+def test_evaluate_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
+    run_evaluate(agent_name="both", episodes=1, max_steps=50, seed=3, verbose=False)
+
+    output = capsys.readouterr().out
+
+    assert "=== Scripted Summary ===" in output
+    assert "=== Random Summary ===" in output
+    assert "Episodes: 1" in output

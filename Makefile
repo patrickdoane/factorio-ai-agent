@@ -2,7 +2,7 @@ PYTHON ?= python3.11
 VENV := .venv
 VENV_PYTHON := $(VENV)/bin/python
 
-.PHONY: setup test run-scripted run-random train-ppo clean
+.PHONY: setup test run-scripted run-random evaluate train-ppo clean
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -17,6 +17,9 @@ run-scripted:
 
 run-random:
 	$(VENV)/bin/factorio-ai run-random
+
+evaluate:
+	$(VENV)/bin/factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42
 
 train-ppo:
 	$(VENV)/bin/factorio-ai train-ppo

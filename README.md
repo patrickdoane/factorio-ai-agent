@@ -41,7 +41,7 @@ pip install -e .[dev,rl]
 Run a random agent:
 
 ```bash
-factorio-ai run-random --episodes 3 --max-steps 100 --quiet
+factorio-ai run-random --episodes 3 --max-steps 100 --seed 42 --quiet
 ```
 
 Run the scripted burner-miner agent:
@@ -53,7 +53,18 @@ factorio-ai run-scripted --max-steps 50
 Run the PPO training entry point:
 
 ```bash
-factorio-ai train-ppo
+factorio-ai train-ppo --total-timesteps 2048
+```
+
+PPO defaults to `--device cpu` because this prototype uses a small MLP policy;
+that avoids poor GPU utilization warnings, especially under WSL. You can still
+override it with `--device cuda` when needed. The command also checks for a
+stable Python 3.11+ runtime before importing Stable-Baselines3/Torch.
+
+Compare baselines over multiple episodes:
+
+```bash
+factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42
 ```
 
 ## Mock Task
@@ -73,6 +84,11 @@ The observation is a dictionary containing:
 - `placed_entities`
 - `step_count`
 - `current_objective`
+
+For reinforcement learning experiments, `NumericObservationWrapper` converts the
+mock dictionary observation into a fixed numeric vector and drops the string
+objective. This keeps the default environment readable while giving PPO a simple
+`Box` observation space.
 
 ## Roadmap
 
@@ -94,10 +110,12 @@ With `make`:
 ```bash
 make test
 make run-scripted
+make evaluate
 ```
 
 The CLI supports `--quiet` for summary-only runs. `run-random` also supports
-`--episodes` for quick baseline evaluation.
+`--episodes` for quick baseline evaluation. Use `factorio-ai evaluate` for a
+summary-first comparison of scripted and random agents.
 
 This repository is intended to use a lightweight feature branch workflow for
 rapid local iteration.
