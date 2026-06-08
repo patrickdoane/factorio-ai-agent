@@ -42,30 +42,38 @@ pip install -e .[dev,rl]
 Run a random agent:
 
 ```bash
-factorio-ai run-random --episodes 3 --max-steps 100 --seed 42 --quiet
+factorio-ai run-random --task first-plate --episodes 3 --seed 42 --quiet
 ```
 
 Run the scripted burner-miner agent:
 
 ```bash
-factorio-ai run-scripted --max-steps 80 --target-iron-plates 3
+factorio-ai run-scripted --task three-plates
 ```
 
 Run the PPO training entry point:
 
 ```bash
-factorio-ai train-ppo --total-timesteps 2048
+factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
 ```
 
 PPO defaults to `--device cpu` because this prototype uses a small MLP policy;
 that avoids poor GPU utilization warnings, especially under WSL. You can still
 override it with `--device cuda` when needed. The command also checks for a
-stable Python 3.11+ runtime before importing Stable-Baselines3/Torch.
+stable Python 3.11+ runtime before importing Stable-Baselines3/Torch. PPO's
+rollout size is controlled by `--n-steps`; lower values are useful for smoke
+tests, while larger values are better for real training runs.
 
 Compare baselines over multiple episodes:
 
 ```bash
-factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42 --target-iron-plates 3
+factorio-ai evaluate --agent both --task three-plates --episodes 10 --seed 42
+```
+
+List available tasks:
+
+```bash
+factorio-ai list-tasks
 ```
 
 ## Mock Task
@@ -91,6 +99,10 @@ The observation is a dictionary containing:
 plate count for the episode. This is still a simplified model: it captures the
 need to wait for production without modeling positions, belts, inserters, or
 furnace fuel separately yet.
+
+Named tasks currently include `first-plate`, `three-plates`, and `ten-plates`.
+CLI commands accept `--task` and still allow low-level overrides such as
+`--target-iron-plates` and `--max-steps` for quick experiments.
 
 For reinforcement learning experiments, `NumericObservationWrapper` converts the
 mock dictionary observation into a fixed numeric vector and drops the string

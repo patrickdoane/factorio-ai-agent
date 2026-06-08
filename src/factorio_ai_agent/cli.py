@@ -7,15 +7,17 @@ import argparse
 from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
 from factorio_ai_agent.evaluation import format_summary, run_episode, summarize_results
+from factorio_ai_agent.tasks import resolve_task, task_names
 from factorio_ai_agent.training.train_ppo import train_ppo
 
 
 def run_random(
-    max_steps: int = 100,
+    max_steps: int | None = None,
     episodes: int = 1,
     quiet: bool = False,
     seed: int | None = None,
-    target_iron_plates: int = 1,
+    target_iron_plates: int | None = None,
+    task_name: str = "first-plate",
 ) -> None:
     """Run the random agent in the mock environment."""
     agent = RandomAgent(seed=seed)
@@ -31,6 +33,7 @@ def run_random(
                 episode_number=episode_number,
                 seed=seed,
                 target_iron_plates=target_iron_plates,
+                task_name=task_name,
             )
         )
 
@@ -39,9 +42,10 @@ def run_random(
 
 
 def run_scripted(
-    max_steps: int = 100,
+    max_steps: int | None = None,
     quiet: bool = False,
-    target_iron_plates: int = 1,
+    target_iron_plates: int | None = None,
+    task_name: str = "first-plate",
 ) -> None:
     """Run the scripted burner-miner agent in the mock environment."""
     agent = ScriptedBurnerAgent()
@@ -52,16 +56,18 @@ def run_scripted(
         agent_name="scripted",
         episode_number=1,
         target_iron_plates=target_iron_plates,
+        task_name=task_name,
     )
 
 
 def run_evaluate(
     agent_name: str = "both",
     episodes: int = 10,
-    max_steps: int = 100,
+    max_steps: int | None = None,
     seed: int | None = None,
     verbose: bool = False,
-    target_iron_plates: int = 1,
+    target_iron_plates: int | None = None,
+    task_name: str = "first-plate",
 ) -> None:
     """Evaluate one or both baseline agents over multiple episodes."""
     selected_agents = ["scripted", "random"] if agent_name == "both" else [agent_name]
@@ -83,6 +89,7 @@ def run_evaluate(
                 episode_number=episode_number,
                 seed=seed,
                 target_iron_plates=target_iron_plates,
+                task_name=task_name,
             )
             for episode_number in range(1, episodes + 1)
         ]
@@ -97,17 +104,19 @@ def build_parser() -> argparse.ArgumentParser:
     random_parser = subparsers.add_parser(
         "run-random", help="Run a random valid-action baseline."
     )
-    random_parser.add_argument("--max-steps", type=int, default=100)
+    random_parser.add_argument("--task", choices=task_names(), default="first-plate")
+    random_parser.add_argument("--max-steps", type=int, default=None)
     random_parser.add_argument("--episodes", type=int, default=1)
     random_parser.add_argument("--seed", type=int, default=None)
-    random_parser.add_argument("--target-iron-plates", type=int, default=1)
+    random_parser.add_argument("--target-iron-plates", type=int, default=None)
     random_parser.add_argument("--quiet", action="store_true")
 
     scripted_parser = subparsers.add_parser(
         "run-scripted", help="Run the scripted burner-miner agent."
     )
-    scripted_parser.add_argument("--max-steps", type=int, default=100)
-    scripted_parser.add_argument("--target-iron-plates", type=int, default=1)
+    scripted_parser.add_argument("--task", choices=task_names(), default="first-plate")
+    scripted_parser.add_argument("--max-steps", type=int, default=None)
+    scripted_parser.add_argument("--target-iron-plates", type=int, default=None)
     scripted_parser.add_argument("--quiet", action="store_true")
 
     evaluate_parser = subparsers.add_parser(
@@ -116,17 +125,28 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument(
         "--agent", choices=["scripted", "random", "both"], default="both"
     )
+    evaluate_parser.add_argument("--task", choices=task_names(), default="first-plate")
     evaluate_parser.add_argument("--episodes", type=int, default=10)
-    evaluate_parser.add_argument("--max-steps", type=int, default=100)
+    evaluate_parser.add_argument("--max-steps", type=int, default=None)
     evaluate_parser.add_argument("--seed", type=int, default=None)
-    evaluate_parser.add_argument("--target-iron-plates", type=int, default=1)
+    evaluate_parser.add_argument("--target-iron-plates", type=int, default=None)
     evaluate_parser.add_argument("--verbose", action="store_true")
 
     train_parser = subparsers.add_parser(
         "train-ppo", help="Run the optional PPO training entry point."
     )
+    train_parser.add_argument("--task", choices=task_names(), default="first-plate")
     train_parser.add_argument("--total-timesteps", type=int, default=1_000)
     train_parser.add_argument("--device", default="cpu")
+    train_parser.add_argument("--n-steps", type=int, default=256)
+    train_parser.add_argument("--batch-size", type=int, default=64)
+    train_parser.add_argument("--learning-rate", type=float, default=3e-4)
+    train_parser.add_argument("--seed", type=int, default=None)
+    train_parser.add_argument("--save-path", default=None)
+    train_parser.add_argument("--eval-episodes", type=int, default=0)
+
+    tasks_parser = subparsers.add_parser("list-tasks", help="List available mock tasks.")
+    tasks_parser.set_defaults(command="list-tasks")
     return parser
 
 
@@ -142,12 +162,14 @@ def main() -> None:
             quiet=args.quiet,
             seed=args.seed,
             target_iron_plates=args.target_iron_plates,
+            task_name=args.task,
         )
     elif args.command == "run-scripted":
         run_scripted(
             max_steps=args.max_steps,
             quiet=args.quiet,
             target_iron_plates=args.target_iron_plates,
+            task_name=args.task,
         )
     elif args.command == "evaluate":
         run_evaluate(
@@ -157,9 +179,27 @@ def main() -> None:
             seed=args.seed,
             verbose=args.verbose,
             target_iron_plates=args.target_iron_plates,
+            task_name=args.task,
         )
     elif args.command == "train-ppo":
-        train_ppo(total_timesteps=args.total_timesteps, device=args.device)
+        train_ppo(
+            total_timesteps=args.total_timesteps,
+            device=args.device,
+            task_name=args.task,
+            n_steps=args.n_steps,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            seed=args.seed,
+            save_path=args.save_path,
+            eval_episodes=args.eval_episodes,
+        )
+    elif args.command == "list-tasks":
+        for task_name in task_names():
+            task = resolve_task(task_name)
+            print(
+                f"{task.name}: {task.description} "
+                f"target_iron_plates={task.target_iron_plates} max_steps={task.max_steps}"
+            )
     else:
         parser.error(f"Unknown command: {args.command}")
 

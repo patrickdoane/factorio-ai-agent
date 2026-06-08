@@ -13,16 +13,16 @@ test:
 	$(VENV_PYTHON) -m pytest
 
 run-scripted:
-	$(VENV)/bin/factorio-ai run-scripted --target-iron-plates 3 --max-steps 80
+	$(VENV)/bin/factorio-ai run-scripted --task three-plates
 
 run-random:
 	$(VENV)/bin/factorio-ai run-random
 
 evaluate:
-	$(VENV)/bin/factorio-ai evaluate --agent both --episodes 10 --max-steps 100 --seed 42 --target-iron-plates 3
+	$(VENV)/bin/factorio-ai evaluate --agent both --task three-plates --episodes 10 --seed 42
 
 train-ppo:
-	$(VENV)/bin/factorio-ai train-ppo
+	$(VENV)/bin/factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache build dist *.egg-info

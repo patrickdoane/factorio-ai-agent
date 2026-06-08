@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv, Observation
+from factorio_ai_agent.tasks import TaskDefinition, resolve_task
 
 
 ActionSelector = Callable[[MockFactorioEnv, Observation], int]
@@ -32,15 +33,21 @@ class EpisodeResult:
 def run_episode(
     select_action: ActionSelector,
     *,
-    max_steps: int = 100,
+    max_steps: int | None = None,
     quiet: bool = False,
     agent_name: str = "agent",
     episode_number: int = 1,
     seed: int | None = None,
-    target_iron_plates: int = 1,
+    target_iron_plates: int | None = None,
+    task_name: str = "first-plate",
 ) -> EpisodeResult:
     """Run one mock episode using a caller-provided action selector."""
-    env = MockFactorioEnv(max_steps=max_steps, target_iron_plates=target_iron_plates)
+    task = resolve_task(
+        task_name,
+        max_steps=max_steps,
+        target_iron_plates=target_iron_plates,
+    )
+    env = _make_env(task)
     observation, _ = env.reset(seed=seed)
     terminated = False
     truncated = False
@@ -62,7 +69,7 @@ def run_episode(
         total_reward=total_reward,
         terminated=terminated,
         truncated=truncated,
-        goal=_format_goal(target_iron_plates),
+        goal=_format_goal(task.target_iron_plates),
         status=observation["current_objective"],
     )
     print(_format_result(result, episode_number))
@@ -80,6 +87,13 @@ def summarize_results(results: list[EpisodeResult]) -> dict[str, float]:
         "avg_steps": sum(result.steps for result in results) / len(results),
         "avg_reward": sum(result.total_reward for result in results) / len(results),
     }
+
+
+def _make_env(task: TaskDefinition) -> MockFactorioEnv:
+    return MockFactorioEnv(
+        max_steps=task.max_steps,
+        target_iron_plates=task.target_iron_plates,
+    )
 
 
 def format_summary(label: str, summary: dict[str, float]) -> str:

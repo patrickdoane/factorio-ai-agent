@@ -1,4 +1,4 @@
-from factorio_ai_agent.cli import run_evaluate, run_random, run_scripted
+from factorio_ai_agent.cli import build_parser, run_evaluate, run_random, run_scripted
 
 
 def test_run_scripted_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -33,7 +33,7 @@ def test_run_scripted_verbose_output_has_readable_step_blocks(capsys) -> None:  
 
 
 def test_run_scripted_supports_target_iron_plates(capsys) -> None:  # type: ignore[no-untyped-def]
-    run_scripted(max_steps=80, quiet=True, target_iron_plates=3)
+    run_scripted(quiet=True, task_name="three-plates")
 
     output = capsys.readouterr().out
 
@@ -46,10 +46,9 @@ def test_evaluate_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
     run_evaluate(
         agent_name="both",
         episodes=1,
-        max_steps=80,
         seed=3,
         verbose=False,
-        target_iron_plates=2,
+        task_name="three-plates",
     )
 
     output = capsys.readouterr().out
@@ -57,3 +56,38 @@ def test_evaluate_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
     assert "=== Scripted Summary ===" in output
     assert "=== Random Summary ===" in output
     assert "Episodes: 1" in output
+
+
+def test_train_ppo_parser_accepts_quick_run_options() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "train-ppo",
+            "--task",
+            "first-plate",
+            "--total-timesteps",
+            "64",
+            "--n-steps",
+            "64",
+            "--batch-size",
+            "32",
+            "--learning-rate",
+            "0.001",
+            "--seed",
+            "42",
+            "--save-path",
+            "models/test.zip",
+            "--eval-episodes",
+            "2",
+        ]
+    )
+
+    assert args.command == "train-ppo"
+    assert args.total_timesteps == 64
+    assert args.n_steps == 64
+    assert args.batch_size == 32
+    assert args.learning_rate == 0.001
+    assert args.seed == 42
+    assert args.save_path == "models/test.zip"
+    assert args.eval_episodes == 2
