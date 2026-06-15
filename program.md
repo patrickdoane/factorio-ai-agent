@@ -8,6 +8,18 @@ experiments in `factorio-ai-agent`.
 Improve agent performance on fixed mock Factorio benchmarks without changing the
 benchmark, task definitions, or success criteria.
 
+## North Star
+
+The long-term goal is to build agents that can autonomously play Factorio,
+progressing from primitive mock tasks to real-game rocket launch and eventually
+speedrun-style optimization. The current mock benchmark is a controlled training
+and evaluation ladder. Treat benchmark stability as part of the research design:
+an agent should improve by learning or executing better behavior, not by changing
+the task, reward, or scoring rules.
+
+For durable context across model/provider/mode switches, read
+`docs/project-vision.md` before starting broad research or roadmap work.
+
 ## Benchmark Command
 
 Run the fixed benchmark with:

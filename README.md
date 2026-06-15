@@ -9,6 +9,15 @@ stone furnace and burner mining drill, fuel the setup, and produce the first iro
 plate. The mock environment can also target multiple iron plates using simple
 wait-based miner and furnace production timing.
 
+## Vision
+
+The long-term goal is to build AI agents that can autonomously play Factorio,
+progressing from reliable primitive production tasks to full rocket launch and
+eventually speedrun-style optimization. The mock environment is a controlled,
+deterministic training and evaluation ladder before real Factorio integration;
+benchmark improvements should reflect better agent behavior, not changed task or
+scoring semantics. See `docs/project-vision.md` for durable handoff context.
+
 ## Goals
 
 - Provide a Gymnasium-style environment interface.
