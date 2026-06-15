@@ -1,3 +1,5 @@
+import pytest
+
 from factorio_ai_agent.cli import (
     build_parser,
     run_evaluate,
@@ -121,6 +123,28 @@ def test_research_benchmark_parser_accepts_append_results() -> None:
 
     assert args.command == "research-benchmark"
     assert args.append_results == "results.tsv"
+
+
+def test_research_benchmark_parser_accepts_ppo_model_path() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        ["research-benchmark", "--agent", "ppo", "--model-path", "models/test.zip"]
+    )
+
+    assert args.command == "research-benchmark"
+    assert args.agent == "ppo"
+    assert args.model_path == "models/test.zip"
+
+
+def test_research_benchmark_cli_requires_ppo_model_path() -> None:
+    with pytest.raises(ValueError, match="model_path"):
+        run_research_benchmark(
+            agent_name="ppo",
+            tasks="first-plate",
+            eval_episodes=1,
+            seed=42,
+        )
 
 
 def test_research_benchmark_cli_appends_results(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]

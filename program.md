@@ -40,6 +40,12 @@ For random baseline checks:
 factorio-ai research-benchmark --agent random --tasks first-plate,three-plates --eval-episodes 10 --seed 42
 ```
 
+For saved PPO policy checks:
+
+```bash
+factorio-ai research-benchmark --agent ppo --model-path models/ppo-first.zip --tasks first-plate,three-plates --eval-episodes 10 --seed 42 --append-results
+```
+
 The command emits a final machine-readable summary block:
 
 ```text

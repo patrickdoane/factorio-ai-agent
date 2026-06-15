@@ -108,6 +108,7 @@ def run_research_benchmark(
     eval_episodes: int,
     seed: int,
     append_results: str | None = None,
+    model_path: str | None = None,
 ) -> None:
     """Run the deterministic research benchmark and print the final summary."""
     task_names = parse_task_names(tasks)
@@ -116,6 +117,7 @@ def run_research_benchmark(
         task_names=task_names,
         eval_episodes=eval_episodes,
         seed=seed,
+        model_path=model_path,
     )
     print(format_benchmark_summary(summary))
     if append_results:
@@ -169,10 +171,17 @@ def build_parser() -> argparse.ArgumentParser:
         "research-benchmark",
         help="Run a deterministic benchmark for autonomous research loops.",
     )
-    benchmark_parser.add_argument("--agent", choices=["scripted", "random"], default="scripted")
+    benchmark_parser.add_argument(
+        "--agent", choices=["scripted", "random", "ppo"], default="scripted"
+    )
     benchmark_parser.add_argument("--tasks", default="first-plate,three-plates")
     benchmark_parser.add_argument("--eval-episodes", type=int, default=10)
     benchmark_parser.add_argument("--seed", type=int, default=42)
+    benchmark_parser.add_argument(
+        "--model-path",
+        default=None,
+        help="Path to a saved PPO model when using --agent ppo.",
+    )
     benchmark_parser.add_argument(
         "--append-results",
         nargs="?",
@@ -231,12 +240,15 @@ def main() -> None:
             task_name=args.task,
         )
     elif args.command == "research-benchmark":
+        if args.agent == "ppo" and not args.model_path:
+            parser.error("--model-path is required when using --agent ppo")
         run_research_benchmark(
             agent_name=args.agent,
             tasks=args.tasks,
             eval_episodes=args.eval_episodes,
             seed=args.seed,
             append_results=args.append_results,
+            model_path=args.model_path,
         )
     elif args.command == "train-ppo":
         train_ppo(

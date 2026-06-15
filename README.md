@@ -28,7 +28,7 @@ scoring semantics. See `docs/project-vision.md` for durable handoff context.
 
 ## Install
 
-Recommended reproducible setup with `uv`:
+Recommended reproducible setup with `uv`, including optional RL/PPO dependencies:
 
 ```bash
 uv sync --all-extras
@@ -38,6 +38,12 @@ uv run factorio-ai list-tasks
 
 The checked-in `uv.lock` pins the full development and optional RL dependency
 set so the project can be recreated consistently across machines.
+
+For a lighter non-RL development environment, use:
+
+```bash
+uv sync --extra dev
+```
 
 Fallback setup with `venv` and `pip`:
 
@@ -53,11 +59,15 @@ Or use the local development shortcut:
 make setup
 ```
 
-To install optional reinforcement learning dependencies:
+`make setup` installs the lightweight development environment. To install
+optional reinforcement learning dependencies for PPO training and benchmarking:
 
 ```bash
-pip install -e .[dev,rl]
+make setup-rl
 ```
+
+Without `uv`, the Makefile falls back to `python -m venv` plus `pip install -e
+'.[dev]'` or `pip install -e '.[dev,rl]'`.
 
 ## Usage
 
@@ -79,12 +89,14 @@ Run the PPO training entry point:
 factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
 ```
 
-PPO defaults to `--device cpu` because this prototype uses a small MLP policy;
-that avoids poor GPU utilization warnings, especially under WSL. You can still
-override it with `--device cuda` when needed. The command also checks for a
-stable Python 3.11+ runtime before importing Stable-Baselines3/Torch. PPO's
-rollout size is controlled by `--n-steps`; lower values are useful for smoke
-tests, while larger values are better for real training runs.
+PPO requires the optional `rl` dependency extra. Install it with `uv sync
+--all-extras` or `make setup-rl`. PPO defaults to `--device cpu` because this
+prototype uses a small MLP policy; that avoids poor GPU utilization warnings,
+especially under WSL. You can still override it with `--device cuda` when needed.
+The command also checks for a stable Python 3.11+ runtime before importing
+Stable-Baselines3/Torch. PPO's rollout size is controlled by `--n-steps`; lower
+values are useful for smoke tests, while larger values are better for real
+training runs.
 
 Compare baselines over multiple episodes:
 
@@ -102,6 +114,12 @@ Run the deterministic research benchmark:
 
 ```bash
 factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42
+```
+
+Benchmark a saved PPO model against the same fixed tasks:
+
+```bash
+factorio-ai research-benchmark --agent ppo --model-path models/ppo-first.zip --tasks first-plate,three-plates --eval-episodes 10 --seed 42
 ```
 
 Append benchmark results to untracked `results.tsv`:

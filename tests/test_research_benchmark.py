@@ -1,11 +1,18 @@
 import pytest
 
+import factorio_ai_agent.research.benchmark as benchmark_module
+from factorio_ai_agent.envs.mock_factorio_env import Action
 from factorio_ai_agent.research.benchmark import (
     append_results_tsv,
     format_benchmark_summary,
     parse_task_names,
     run_benchmark,
 )
+
+
+class FakePPOModel:
+    def predict(self, observation, deterministic: bool = True):  # type: ignore[no-untyped-def]
+        return int(Action.WAIT), None
 
 
 def test_scripted_research_benchmark_is_deterministic() -> None:
@@ -40,6 +47,29 @@ def test_random_research_benchmark_returns_summary() -> None:
     assert 0.0 <= summary.success_rate <= 1.0
     assert summary.avg_steps > 0.0
     assert summary.eval_episodes == 2
+
+
+def test_ppo_research_benchmark_uses_saved_model(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    loaded_paths = []
+
+    def load_model(model_path):  # type: ignore[no-untyped-def]
+        loaded_paths.append(model_path)
+        return FakePPOModel()
+
+    monkeypatch.setattr(benchmark_module, "_load_ppo_model", load_model)
+
+    summary = run_benchmark(
+        agent_name="ppo",
+        task_names=["first-plate"],
+        eval_episodes=1,
+        seed=7,
+        model_path="models/test.zip",
+    )
+
+    assert loaded_paths == ["models/test.zip"]
+    assert summary.success_rate == 0.0
+    assert summary.invalid_rate == 0.0
+    assert summary.eval_episodes == 1
 
 
 def test_research_benchmark_summary_format_is_machine_readable() -> None:
@@ -144,8 +174,17 @@ def test_research_benchmark_rejects_invalid_inputs() -> None:
 
     with pytest.raises(ValueError, match="agent_name"):
         run_benchmark(
+            agent_name="planner",
+            task_names=["first-plate"],
+            eval_episodes=1,
+            seed=1,
+        )
+
+    with pytest.raises(ValueError, match="model_path"):
+        run_benchmark(
             agent_name="ppo",
             task_names=["first-plate"],
             eval_episodes=1,
             seed=1,
+            model_path=None,
         )

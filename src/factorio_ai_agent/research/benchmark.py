@@ -11,6 +11,7 @@ from pathlib import Path
 from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
 from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv, Observation
+from factorio_ai_agent.envs.numeric_observation_wrapper import NumericObservationWrapper
 from factorio_ai_agent.tasks import TaskDefinition, get_task
 
 
@@ -43,17 +44,19 @@ def run_benchmark(
     task_names: Iterable[str],
     eval_episodes: int,
     seed: int,
+    model_path: str | Path | None = None,
 ) -> BenchmarkSummary:
     """Run a deterministic benchmark over named tasks and return a summary."""
     if eval_episodes < 1:
         raise ValueError("eval_episodes must be at least 1.")
+    ppo_model = _load_ppo_model(model_path) if agent_name == "ppo" else None
 
     episodes: list[BenchmarkEpisode] = []
     for task_index, task_name in enumerate(task_names):
         task = get_task(task_name)
         for episode_index in range(eval_episodes):
             episode_seed = seed + task_index * eval_episodes + episode_index
-            episodes.append(_run_episode(agent_name, task, episode_seed))
+            episodes.append(_run_episode(agent_name, task, episode_seed, ppo_model))
 
     return summarize_benchmark(episodes)
 
@@ -181,11 +184,39 @@ def _git_commit() -> str:
     return result.stdout.strip() or "unknown"
 
 
-def _run_episode(agent_name: str, task: TaskDefinition, seed: int) -> BenchmarkEpisode:
-    env = MockFactorioEnv(
+def _load_ppo_model(model_path: str | Path | None) -> object:
+    if model_path is None:
+        raise ValueError("model_path is required when agent_name is 'ppo'.")
+
+    try:
+        from stable_baselines3 import PPO
+    except ImportError as error:
+        raise ImportError(
+            "Stable-Baselines3 is required to benchmark PPO models. "
+            "Install with: pip install -e '.[rl]'"
+        ) from error
+
+    return PPO.load(model_path, device="cpu")
+
+
+def _make_mock_env(task: TaskDefinition) -> MockFactorioEnv:
+    return MockFactorioEnv(
         max_steps=task.max_steps,
         target_iron_plates=task.target_iron_plates,
     )
+
+
+def _run_episode(
+    agent_name: str,
+    task: TaskDefinition,
+    seed: int,
+    ppo_model: object | None,
+) -> BenchmarkEpisode:
+    env = _make_mock_env(task)
+
+    if agent_name == "ppo":
+        return _run_ppo_episode(env, task, seed, ppo_model)
+
     observation, _ = env.reset(seed=seed)
     terminated = False
     truncated = False
@@ -210,6 +241,37 @@ def _run_episode(agent_name: str, task: TaskDefinition, seed: int) -> BenchmarkE
     )
 
 
+def _run_ppo_episode(
+    env: MockFactorioEnv,
+    task: TaskDefinition,
+    seed: int,
+    ppo_model: object | None,
+) -> BenchmarkEpisode:
+    if ppo_model is None:
+        raise ValueError("ppo_model is required when agent_name is 'ppo'.")
+
+    wrapped_env = NumericObservationWrapper(env)
+    observation, _ = wrapped_env.reset(seed=seed)
+    terminated = False
+    truncated = False
+    total_reward = 0.0
+    invalid_actions = 0
+
+    while not terminated and not truncated:
+        action, _ = ppo_model.predict(observation, deterministic=True)  # type: ignore[attr-defined]
+        observation, reward, terminated, truncated, info = wrapped_env.step(int(action))
+        total_reward += reward
+        invalid_actions += int(not info["valid_action"])
+
+    return BenchmarkEpisode(
+        task_name=task.name,
+        success=terminated,
+        steps=env.step_count,
+        total_reward=total_reward,
+        invalid_actions=invalid_actions,
+    )
+
+
 def _select_action(
     agent_name: str,
     env: MockFactorioEnv,
@@ -221,4 +283,4 @@ def _select_action(
         return random_agent.act(env)
     if agent_name == "scripted":
         return scripted_agent.act(observation)
-    raise ValueError("agent_name must be 'scripted' or 'random'.")
+    raise ValueError("agent_name must be 'scripted', 'random', or 'ppo'.")
