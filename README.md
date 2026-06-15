@@ -19,6 +19,19 @@ wait-based miner and furnace production timing.
 
 ## Install
 
+Recommended reproducible setup with `uv`:
+
+```bash
+uv sync --all-extras
+uv run pytest
+uv run factorio-ai list-tasks
+```
+
+The checked-in `uv.lock` pins the full development and optional RL dependency
+set so the project can be recreated consistently across machines.
+
+Fallback setup with `venv` and `pip`:
+
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
