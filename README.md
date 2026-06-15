@@ -89,6 +89,12 @@ List available tasks:
 factorio-ai list-tasks
 ```
 
+Run the deterministic research benchmark:
+
+```bash
+factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42
+```
+
 ## Mock Task
 
 `MockFactorioEnv` simulates a minimal Factorio task with discrete actions:

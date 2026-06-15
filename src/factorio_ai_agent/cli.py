@@ -7,6 +7,11 @@ import argparse
 from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
 from factorio_ai_agent.evaluation import format_summary, run_episode, summarize_results
+from factorio_ai_agent.research.benchmark import (
+    format_benchmark_summary,
+    parse_task_names,
+    run_benchmark,
+)
 from factorio_ai_agent.tasks import resolve_task, task_names
 from factorio_ai_agent.training.train_ppo import train_ppo
 
@@ -96,6 +101,22 @@ def run_evaluate(
         print(format_summary(selected_agent.title(), summarize_results(results)))
 
 
+def run_research_benchmark(
+    agent_name: str,
+    tasks: str,
+    eval_episodes: int,
+    seed: int,
+) -> None:
+    """Run the deterministic research benchmark and print the final summary."""
+    summary = run_benchmark(
+        agent_name=agent_name,
+        task_names=parse_task_names(tasks),
+        eval_episodes=eval_episodes,
+        seed=seed,
+    )
+    print(format_benchmark_summary(summary))
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser."""
     parser = argparse.ArgumentParser(prog="factorio-ai")
@@ -131,6 +152,15 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--seed", type=int, default=None)
     evaluate_parser.add_argument("--target-iron-plates", type=int, default=None)
     evaluate_parser.add_argument("--verbose", action="store_true")
+
+    benchmark_parser = subparsers.add_parser(
+        "research-benchmark",
+        help="Run a deterministic benchmark for autonomous research loops.",
+    )
+    benchmark_parser.add_argument("--agent", choices=["scripted", "random"], default="scripted")
+    benchmark_parser.add_argument("--tasks", default="first-plate,three-plates")
+    benchmark_parser.add_argument("--eval-episodes", type=int, default=10)
+    benchmark_parser.add_argument("--seed", type=int, default=42)
 
     train_parser = subparsers.add_parser(
         "train-ppo", help="Run the optional PPO training entry point."
@@ -180,6 +210,13 @@ def main() -> None:
             verbose=args.verbose,
             target_iron_plates=args.target_iron_plates,
             task_name=args.task,
+        )
+    elif args.command == "research-benchmark":
+        run_research_benchmark(
+            agent_name=args.agent,
+            tasks=args.tasks,
+            eval_episodes=args.eval_episodes,
+            seed=args.seed,
         )
     elif args.command == "train-ppo":
         train_ppo(

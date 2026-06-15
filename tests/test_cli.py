@@ -1,4 +1,10 @@
-from factorio_ai_agent.cli import build_parser, run_evaluate, run_random, run_scripted
+from factorio_ai_agent.cli import (
+    build_parser,
+    run_evaluate,
+    run_random,
+    run_research_benchmark,
+    run_scripted,
+)
 
 
 def test_run_scripted_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -91,3 +97,18 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
     assert args.seed == 42
     assert args.save_path == "models/test.zip"
     assert args.eval_episodes == 2
+
+
+def test_research_benchmark_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
+    run_research_benchmark(
+        agent_name="scripted",
+        tasks="first-plate,three-plates",
+        eval_episodes=1,
+        seed=42,
+    )
+
+    output = capsys.readouterr().out
+
+    assert output.startswith("---\n")
+    assert "score:" in output
+    assert "success_rate:       1.000000" in output

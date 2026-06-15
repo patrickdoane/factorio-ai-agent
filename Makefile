@@ -2,7 +2,7 @@ PYTHON ?= python3.11
 VENV := .venv
 VENV_PYTHON := $(VENV)/bin/python
 
-.PHONY: setup test run-scripted run-random evaluate train-ppo clean
+.PHONY: setup test run-scripted run-random evaluate research-benchmark train-ppo clean
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -20,6 +20,9 @@ run-random:
 
 evaluate:
 	$(VENV)/bin/factorio-ai evaluate --agent both --task three-plates --episodes 10 --seed 42
+
+research-benchmark:
+	$(VENV)/bin/factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42
 
 train-ppo:
 	$(VENV)/bin/factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
