@@ -112,3 +112,29 @@ def test_research_benchmark_cli_smoke(capsys) -> None:  # type: ignore[no-untype
     assert output.startswith("---\n")
     assert "score:" in output
     assert "success_rate:       1.000000" in output
+
+
+def test_research_benchmark_parser_accepts_append_results() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["research-benchmark", "--append-results"])
+
+    assert args.command == "research-benchmark"
+    assert args.append_results == "results.tsv"
+
+
+def test_research_benchmark_cli_appends_results(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    result_path = tmp_path / "bench.tsv"
+
+    run_research_benchmark(
+        agent_name="scripted",
+        tasks="first-plate",
+        eval_episodes=1,
+        seed=42,
+        append_results=str(result_path),
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Appended benchmark result to" in output
+    assert "scripted\tfirst-plate\t42" in result_path.read_text(encoding="utf-8")

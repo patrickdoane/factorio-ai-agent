@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
@@ -91,6 +94,27 @@ def format_benchmark_summary(summary: BenchmarkSummary) -> str:
     )
 
 
+def append_results_tsv(
+    path: str | Path,
+    *,
+    summary: BenchmarkSummary,
+    agent_name: str,
+    task_names: Iterable[str],
+    seed: int,
+) -> Path:
+    """Append one benchmark summary row to a TSV log file."""
+    result_path = Path(path)
+    result_path.parent.mkdir(parents=True, exist_ok=True)
+    should_write_header = not result_path.exists() or result_path.stat().st_size == 0
+
+    with result_path.open("a", encoding="utf-8") as file:
+        if should_write_header:
+            file.write(_results_header() + "\n")
+        file.write(_results_row(summary, agent_name, task_names, seed) + "\n")
+
+    return result_path
+
+
 def parse_task_names(value: str) -> list[str]:
     """Parse a comma-separated task list for CLI use."""
     task_names = [task_name.strip() for task_name in value.split(",") if task_name.strip()]
@@ -99,6 +123,62 @@ def parse_task_names(value: str) -> list[str]:
     for task_name in task_names:
         get_task(task_name)
     return task_names
+
+
+def _results_header() -> str:
+    return "\t".join(
+        [
+            "timestamp",
+            "git_commit",
+            "agent",
+            "tasks",
+            "seed",
+            "score",
+            "success_rate",
+            "avg_steps",
+            "avg_reward",
+            "invalid_rate",
+            "eval_episodes",
+        ]
+    )
+
+
+def _results_row(
+    summary: BenchmarkSummary,
+    agent_name: str,
+    task_names: Iterable[str],
+    seed: int,
+) -> str:
+    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+    return "\t".join(
+        [
+            timestamp,
+            _git_commit(),
+            agent_name,
+            ",".join(task_names),
+            str(seed),
+            f"{summary.score:.6f}",
+            f"{summary.success_rate:.6f}",
+            f"{summary.avg_steps:.6f}",
+            f"{summary.avg_reward:.6f}",
+            f"{summary.invalid_rate:.6f}",
+            str(summary.eval_episodes),
+        ]
+    )
+
+
+def _git_commit() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=2,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return "unknown"
+    return result.stdout.strip() or "unknown"
 
 
 def _run_episode(agent_name: str, task: TaskDefinition, seed: int) -> BenchmarkEpisode:

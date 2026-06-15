@@ -95,6 +95,12 @@ Run the deterministic research benchmark:
 factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42
 ```
 
+Append benchmark results to untracked `results.tsv`:
+
+```bash
+factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42 --append-results
+```
+
 ## Mock Task
 
 `MockFactorioEnv` simulates a minimal Factorio task with discrete actions:

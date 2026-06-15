@@ -16,6 +16,12 @@ Run the fixed benchmark with:
 factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42
 ```
 
+Append benchmark results to the untracked experiment log with:
+
+```bash
+factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates --eval-episodes 10 --seed 42 --append-results
+```
+
 For random baseline checks:
 
 ```bash
@@ -66,6 +72,9 @@ Use untracked `results.tsv` for experiment notes. Record at least:
 - avg_reward
 - invalid_rate
 - notes
+
+The benchmark command can append the core numeric fields automatically with
+`--append-results`. Add free-form notes manually when needed.
 
 ## Guardrails
 

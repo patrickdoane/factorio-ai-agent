@@ -8,6 +8,7 @@ from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
 from factorio_ai_agent.evaluation import format_summary, run_episode, summarize_results
 from factorio_ai_agent.research.benchmark import (
+    append_results_tsv,
     format_benchmark_summary,
     parse_task_names,
     run_benchmark,
@@ -106,15 +107,26 @@ def run_research_benchmark(
     tasks: str,
     eval_episodes: int,
     seed: int,
+    append_results: str | None = None,
 ) -> None:
     """Run the deterministic research benchmark and print the final summary."""
+    task_names = parse_task_names(tasks)
     summary = run_benchmark(
         agent_name=agent_name,
-        task_names=parse_task_names(tasks),
+        task_names=task_names,
         eval_episodes=eval_episodes,
         seed=seed,
     )
     print(format_benchmark_summary(summary))
+    if append_results:
+        path = append_results_tsv(
+            append_results,
+            summary=summary,
+            agent_name=agent_name,
+            task_names=task_names,
+            seed=seed,
+        )
+        print(f"Appended benchmark result to {path}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -161,6 +173,13 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--tasks", default="first-plate,three-plates")
     benchmark_parser.add_argument("--eval-episodes", type=int, default=10)
     benchmark_parser.add_argument("--seed", type=int, default=42)
+    benchmark_parser.add_argument(
+        "--append-results",
+        nargs="?",
+        const="results.tsv",
+        default=None,
+        help="Append the benchmark summary to a TSV file. Defaults to results.tsv.",
+    )
 
     train_parser = subparsers.add_parser(
         "train-ppo", help="Run the optional PPO training entry point."
@@ -217,6 +236,7 @@ def main() -> None:
             tasks=args.tasks,
             eval_episodes=args.eval_episodes,
             seed=args.seed,
+            append_results=args.append_results,
         )
     elif args.command == "train-ppo":
         train_ppo(
