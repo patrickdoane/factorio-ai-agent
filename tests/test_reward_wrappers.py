@@ -53,7 +53,7 @@ def test_progress_reward_wrapper_does_not_reward_repeated_milestone() -> None:
     assert "progress_reward" not in info
 
 
-def test_burner_progress_penalizes_manual_plate_shortcut() -> None:
+def test_burner_progress_allows_bootstrap_manual_plate_before_drill_exists() -> None:
     env = BurnerProgressRewardWrapper(
         MockFactorioEnv(max_steps=20, require_burner_miner_for_success=True)
     )
@@ -69,8 +69,8 @@ def test_burner_progress_penalizes_manual_plate_shortcut() -> None:
 
     _, reward, _, _, info = env.step(int(Action.WAIT))
 
-    assert reward == pytest.approx(-0.01)
-    assert info["progress_reward"] == -10.0
+    assert reward == pytest.approx(10.99)
+    assert info["progress_reward"] == 1.0
 
 
 def test_burner_progress_penalizes_manual_plate_after_spending_starting_plates() -> None:
@@ -222,6 +222,18 @@ def test_burner_progress_penalizes_manual_ore_while_burner_ore_needed() -> None:
 
     assert reward == pytest.approx(-2.01)
     assert info["progress_reward"] == pytest.approx(-2.0)
+
+
+def test_burner_progress_allows_bootstrap_manual_ore_before_drill_exists() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(max_steps=20, require_burner_miner_for_success=True)
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.MINE_IRON_ORE))
+
+    assert reward == pytest.approx(0.04)
+    assert info["progress_reward"] == 0.05
 
 
 def test_burner_progress_cancels_plate_reward_until_burner_requirement_met() -> None:

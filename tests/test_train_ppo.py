@@ -134,5 +134,5 @@ def test_make_training_env_applies_burner_progress_reward_shaping() -> None:
 
     _, reward, _, _, info = env.step(8)
 
-    assert reward == pytest.approx(-0.01)
-    assert info["progress_reward"] == -10.0
+    assert reward == pytest.approx(10.99)
+    assert info["progress_reward"] == 1.0

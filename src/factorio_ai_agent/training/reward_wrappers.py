@@ -142,7 +142,7 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
         if self._needs_more_burner_ore() and info.get("valid_action"):
             if action == Action.INSERT_COAL_FUEL.value and self._refuel_is_useful():
                 shaping_reward += self.BURNER_REFUEL_BONUS
-            if action == Action.MINE_IRON_ORE.value:
+            if action == Action.MINE_IRON_ORE.value and not self._manual_bootstrap_allowed():
                 shaping_reward -= self.MANUAL_ORE_PENALTY
         if self._produced_plate_before_burner_requirement(info):
             shaping_reward -= self.MANUAL_PLATE_REWARD
@@ -173,6 +173,7 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             self.env.require_burner_miner_for_success
             and bool(info.get("produced_iron_plate"))
             and self._needs_more_burner_ore()
+            and not self._manual_bootstrap_allowed()
         )
 
     def _needs_more_burner_ore(self) -> bool:
@@ -188,6 +189,13 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             - self.env.production_state["burner_mined_iron_ore"]
         )
         return self.env.placed_entities["coal_fuel_inserted"] <= remaining_required_ore
+
+    def _manual_bootstrap_allowed(self) -> bool:
+        return (
+            not self._started_with_burner_miner
+            and self.env.inventory["burner_mining_drill"] == 0
+            and self.env.placed_entities["burner_mining_drill"] == 0
+        )
 
     def _crafted_unneeded_freeplay_gear(self, action: int) -> bool:
         return (
