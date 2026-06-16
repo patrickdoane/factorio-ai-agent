@@ -307,6 +307,11 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument("--batch-size", type=int, default=64)
     train_parser.add_argument("--learning-rate", type=float, default=3e-4)
     train_parser.add_argument("--seed", type=int, default=None)
+    train_parser.add_argument(
+        "--load-path",
+        default=None,
+        help="Optional saved PPO/MaskablePPO model to continue training.",
+    )
     train_parser.add_argument("--save-path", default=None)
     train_parser.add_argument("--eval-episodes", type=int, default=0)
     train_parser.add_argument(
@@ -389,6 +394,7 @@ def main() -> None:
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
             seed=args.seed,
+            load_path=args.load_path,
             save_path=args.save_path,
             eval_episodes=args.eval_episodes,
             reward_shaping=args.reward_shaping,

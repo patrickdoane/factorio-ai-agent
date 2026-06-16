@@ -110,6 +110,12 @@ Train one policy across multiple tasks by passing a comma-separated task list:
 factorio-ai train-ppo --algo maskable-ppo --tasks freeplay-burner-first-plate,freeplay-burner-three-plates,freeplay-burner-ten-plates --total-timesteps 50000 --reward-shaping burner-progress --save-path /tmp/opencode/maskable-freeplay-multitask.zip
 ```
 
+Continue training from an existing saved policy with `--load-path`:
+
+```bash
+factorio-ai train-ppo --algo maskable-ppo --load-path /tmp/opencode/maskable-ppo-freeplay-burner-ten-refuel-capped-50k.zip --tasks freeplay-burner-first-plate,freeplay-burner-three-plates,freeplay-burner-ten-plates --total-timesteps 25000 --reward-shaping burner-progress --save-path /tmp/opencode/maskable-freeplay-multitask-finetuned.zip
+```
+
 Use training-only progress reward shaping for denser PPO feedback while keeping
 benchmark rewards unchanged:
 

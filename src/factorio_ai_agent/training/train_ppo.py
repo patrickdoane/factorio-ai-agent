@@ -26,6 +26,7 @@ def train_ppo(
     batch_size: int = 64,
     learning_rate: float = 3e-4,
     seed: int | None = None,
+    load_path: str | None = None,
     save_path: str | None = None,
     eval_episodes: int = 0,
     reward_shaping: str = "none",
@@ -53,16 +54,28 @@ def train_ppo(
         return
 
     env = _make_training_envs(training_task_names, reward_shaping=reward_shaping)
-    model = model_class(
-        "MlpPolicy",
-        env,
-        verbose=1,
-        device=device,
-        n_steps=n_steps,
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        seed=seed,
-    )
+    if load_path:
+        model = model_class.load(
+            load_path,
+            env=env,
+            device=device,
+            n_steps=n_steps,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            seed=seed,
+        )
+        model.verbose = 1
+    else:
+        model = model_class(
+            "MlpPolicy",
+            env,
+            verbose=1,
+            device=device,
+            n_steps=n_steps,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            seed=seed,
+        )
     model.learn(total_timesteps=total_timesteps)
 
     if save_path:

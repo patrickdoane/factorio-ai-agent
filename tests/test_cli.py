@@ -97,6 +97,8 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
             "0.001",
             "--seed",
             "42",
+            "--load-path",
+            "models/base.zip",
             "--save-path",
             "models/test.zip",
             "--eval-episodes",
@@ -115,6 +117,7 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
     assert args.batch_size == 32
     assert args.learning_rate == 0.001
     assert args.seed == 42
+    assert args.load_path == "models/base.zip"
     assert args.save_path == "models/test.zip"
     assert args.eval_episodes == 2
     assert args.algo == "maskable-ppo"
