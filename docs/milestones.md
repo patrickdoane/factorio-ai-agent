@@ -13,7 +13,65 @@ while `buffered-collect-plate` requires the policy to collect that output with
 `TAKE_FURNACE_OUTPUT`. Older tasks keep their inventory-output behavior by
 default.
 
-Current best multi-task buffer policy:
+Current best three-task buffer policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-multitask-three-50k.zip`
+- Tasks: `buffered-smelt-plate`, `buffered-collect-plate`,
+  `buffered-collect-three-plates`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `50000`
+
+Aggregate benchmark result:
+
+```text
+score:              0.999033
+success_rate:       1.000000
+avg_steps:          9.666667
+avg_reward:         29.903333
+invalid_rate:       0.000000
+eval_episodes:      60
+```
+
+Per-task benchmark results:
+
+```text
+buffered-smelt-plate:          success_rate=1.000000 avg_steps=4.000000  invalid_rate=0.000000
+buffered-collect-plate:        success_rate=1.000000 avg_steps=5.000000  invalid_rate=0.000000
+buffered-collect-three-plates: success_rate=1.000000 avg_steps=20.000000 invalid_rate=0.000000
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --tasks buffered-smelt-plate,buffered-collect-plate,buffered-collect-three-plates \
+  --total-timesteps 50000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-multitask-three-50k.zip
+```
+
+Aggregate benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-multitask-three-50k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-smelt-plate,buffered-collect-plate,buffered-collect-three-plates \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The three-task policy preserves solved behavior for smelting, single collection,
+  and repeated collection with zero invalid actions.
+- The repeated collection task completes one step slower than the single-task
+  repeated policy, so the single-task model remains a slightly better specialist.
+
+Previous two-task buffer policy:
 
 - Model path: `/tmp/opencode/maskable-ppo-buffered-multitask-20k.zip`
 - Tasks: `buffered-smelt-plate`, `buffered-collect-plate`
