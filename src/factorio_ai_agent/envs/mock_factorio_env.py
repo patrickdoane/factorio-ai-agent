@@ -195,6 +195,11 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             "collected_iron_plates",
             "smelted_iron_plates",
         }:
+            if (
+                self.success_condition == "collected_iron_plates"
+                and self.production_state["furnace_output_iron_plate"] >= 1
+            ):
+                return [Action.TAKE_FURNACE_OUTPUT.value]
             valid = [Action.MINE_IRON_ORE]
             if self._can_insert_iron_ore_into_furnace():
                 valid.append(Action.INSERT_IRON_ORE_INTO_FURNACE)
