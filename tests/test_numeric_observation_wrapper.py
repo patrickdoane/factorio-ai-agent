@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (21,)
+    assert observation.shape == (23,)
     assert env.observation_space.contains(observation)
 
 
@@ -36,7 +36,9 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         1.0,
         0.0,
         0.0,
+        0.0,
         1.0,
+        0.0,
         0.0,
         0.0,
         0.0,
@@ -52,7 +54,17 @@ def test_numeric_wrapper_encodes_success_condition() -> None:
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-6:-1] == [0.0, 0.0, 0.0, 0.0, 1.0]
+    assert observation.tolist()[-7:-1] == [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+
+def test_numeric_wrapper_distinguishes_buffered_plate_success_condition() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(success_condition="buffered_iron_plates")
+    )
+
+    observation, _ = env.reset()
+
+    assert observation.tolist()[-7:-1] == [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 
 
 def test_numeric_wrapper_distinguishes_smelted_plate_success_condition() -> None:
@@ -62,7 +74,28 @@ def test_numeric_wrapper_distinguishes_smelted_plate_success_condition() -> None
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-6:-1] == [0.0, 1.0, 0.0, 0.0, 0.0]
+    assert observation.tolist()[-7:-1] == [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+
+
+def test_numeric_wrapper_exposes_furnace_output_buffer() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(
+            starting_inventory={"stone_furnace": 1},
+            success_condition="buffered_iron_plates",
+            use_furnace_output_buffer=True,
+        )
+    )
+    env.reset()
+
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.MINE_IRON_ORE.value,
+        Action.WAIT.value,
+    ]:
+        env.step(action)
+    observation, _, _, _, _ = env.step(Action.WAIT.value)
+
+    assert observation.tolist()[15] == 1.0
 
 
 def test_numeric_wrapper_exposes_action_masks() -> None:

@@ -18,6 +18,7 @@ def test_reset_returns_expected_observation_shape() -> None:
     assert observation["production_state"]["target_iron_plates"] == 1
     assert observation["production_state"]["burner_mined_iron_ore"] == 0
     assert observation["production_state"]["required_burner_mined_iron_ore"] == 0
+    assert observation["production_state"]["furnace_output_iron_plate"] == 0
     assert observation["step_count"] == 0
     assert observation["current_objective"] == "Craft stone furnace"
 
@@ -226,6 +227,7 @@ def test_manual_sequence_produces_first_iron_plate() -> None:
         observation, reward, terminated, truncated, _ = env.step(action)
 
     assert observation["inventory"]["iron_plate"] == 1
+    assert observation["production_state"]["furnace_output_iron_plate"] == 0
     assert reward > 9.0
     assert terminated
     assert not truncated
@@ -402,10 +404,41 @@ def test_wait_advances_miner_and_furnace_production_timing() -> None:
     observation, reward, terminated, truncated, info = env.step(Action.WAIT.value)
 
     assert observation["inventory"]["iron_plate"] == 1
+    assert observation["production_state"]["furnace_output_iron_plate"] == 0
     assert observation["placed_entities"]["coal_fuel_inserted"] == 0
     assert observation["production_state"]["burner_mined_iron_ore"] == 1
     assert observation["production_state"]["miner_progress"] == 0
     assert observation["production_state"]["furnace_progress"] == 0
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["produced_iron_plate"] is True
+
+
+def test_buffered_furnace_output_stores_plate_outside_inventory() -> None:
+    env = MockFactorioEnv(
+        max_steps=10,
+        target_iron_plates=1,
+        starting_inventory={"stone_furnace": 1},
+        success_condition="buffered_iron_plates",
+        use_furnace_output_buffer=True,
+    )
+    observation, _ = env.reset()
+
+    assert observation["current_objective"] == "Smelt 1 more buffered iron plate"
+    assert observation["success_condition"] == "buffered_iron_plates"
+
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.MINE_IRON_ORE.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]:
+        observation, reward, terminated, truncated, info = env.step(action)
+
+    assert observation["inventory"]["iron_plate"] == 0
+    assert observation["production_state"]["furnace_output_iron_plate"] == 1
+    assert observation["current_objective"] == "Task complete"
     assert reward > 9.0
     assert terminated
     assert not truncated

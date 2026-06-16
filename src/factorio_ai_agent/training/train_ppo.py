@@ -190,6 +190,7 @@ def _make_mock_env(
         starting_inventory=dict(task.starting_inventory),
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
         success_condition=task.success_condition,
+        use_furnace_output_buffer=task.use_furnace_output_buffer,
     )
     if reward_shaping == "progress":
         env = ProgressRewardWrapper(env)  # type: ignore[assignment]

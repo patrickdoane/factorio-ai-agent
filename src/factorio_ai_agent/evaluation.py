@@ -97,6 +97,7 @@ def _make_env(task: TaskDefinition) -> MockFactorioEnv:
         starting_inventory=dict(task.starting_inventory),
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
         success_condition=task.success_condition,
+        use_furnace_output_buffer=task.use_furnace_output_buffer,
     )
 
 
@@ -157,6 +158,8 @@ def format_goal(target_iron_plates: int) -> str:
 def format_task_goal(task: TaskDefinition) -> str:
     if task.success_condition == "stone_furnace_crafted":
         return "Craft stone furnace"
+    if task.success_condition == "buffered_iron_plates":
+        return format_goal(task.target_iron_plates)
     if task.success_condition == "smelted_iron_plates":
         return format_goal(task.target_iron_plates)
     if task.success_condition == "burner_mining_drill_crafted":

@@ -8,6 +8,7 @@ from typing import Literal
 
 SuccessCondition = Literal[
     "iron_plates",
+    "buffered_iron_plates",
     "smelted_iron_plates",
     "stone_furnace_crafted",
     "burner_mining_drill_crafted",
@@ -34,6 +35,7 @@ class TaskDefinition:
     starting_inventory: tuple[tuple[str, int], ...] = ()
     required_burner_mined_iron_ore: int | None = None
     success_condition: SuccessCondition = "iron_plates"
+    use_furnace_output_buffer: bool = False
 
 
 TASKS: dict[str, TaskDefinition] = {
@@ -96,6 +98,15 @@ TASKS: dict[str, TaskDefinition] = {
         max_steps=40,
         starting_inventory=(("stone_furnace", 1),),
         success_condition="smelted_iron_plates",
+    ),
+    "buffered-smelt-plate": TaskDefinition(
+        name="buffered-smelt-plate",
+        description="Smelt one iron plate into a furnace output buffer.",
+        target_iron_plates=1,
+        max_steps=10,
+        starting_inventory=(("stone_furnace", 1),),
+        success_condition="buffered_iron_plates",
+        use_furnace_output_buffer=True,
     ),
     "bootstrap-craft-drill": TaskDefinition(
         name="bootstrap-craft-drill",
@@ -176,4 +187,5 @@ def resolve_task(
         starting_inventory=task.starting_inventory,
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
         success_condition=task.success_condition,
+        use_furnace_output_buffer=task.use_furnace_output_buffer,
     )
