@@ -32,18 +32,31 @@ PRODUCTION_STATE_KEYS = (
     "burner_mined_iron_ore",
     "required_burner_mined_iron_ore",
 )
+SUCCESS_CONDITIONS = (
+    "iron_plates",
+    "stone_furnace_crafted",
+    "burner_mining_drill_crafted",
+    "burner_mining_drill_fueled",
+)
 
 
 class NumericObservationWrapper(gym.ObservationWrapper[Observation, np.ndarray, int]):
     """Flatten mock dict observations into a numeric vector.
 
-    The vector order is inventory counts, placed entity counts, then step count.
-    The current objective is intentionally excluded for now because it is a string.
+    The vector order is inventory counts, placed entity counts, production state,
+    success-condition one-hot values, then step count. The current objective is
+    intentionally excluded because it is a free-form string.
     """
 
     def __init__(self, env: gym.Env[Observation, int]) -> None:
         super().__init__(env)
-        vector_size = len(INVENTORY_KEYS) + len(PLACED_ENTITY_KEYS) + len(PRODUCTION_STATE_KEYS) + 1
+        vector_size = (
+            len(INVENTORY_KEYS)
+            + len(PLACED_ENTITY_KEYS)
+            + len(PRODUCTION_STATE_KEYS)
+            + len(SUCCESS_CONDITIONS)
+            + 1
+        )
         self.observation_space = spaces.Box(
             low=0.0,
             high=100.0,
@@ -57,6 +70,8 @@ class NumericObservationWrapper(gym.ObservationWrapper[Observation, np.ndarray, 
         values.extend(float(observation["inventory"][key]) for key in INVENTORY_KEYS)
         values.extend(float(observation["placed_entities"][key]) for key in PLACED_ENTITY_KEYS)
         values.extend(float(observation["production_state"][key]) for key in PRODUCTION_STATE_KEYS)
+        success_condition = observation["success_condition"]
+        values.extend(float(success_condition == condition) for condition in SUCCESS_CONDITIONS)
         values.append(float(observation["step_count"]))
         return np.array(values, dtype=np.float32)
 

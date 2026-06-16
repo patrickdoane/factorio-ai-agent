@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (16,)
+    assert observation.shape == (20,)
     assert env.observation_space.contains(observation)
 
 
@@ -37,7 +37,21 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         0.0,
         0.0,
         1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
     ]
+
+
+def test_numeric_wrapper_encodes_success_condition() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(success_condition="burner_mining_drill_fueled")
+    )
+
+    observation, _ = env.reset()
+
+    assert observation.tolist()[-5:-1] == [0.0, 0.0, 0.0, 1.0]
 
 
 def test_numeric_wrapper_exposes_action_masks() -> None:

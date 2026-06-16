@@ -108,6 +108,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
                 ),
                 "step_count": spaces.Discrete(max_steps + 1),
                 "current_objective": spaces.Text(max_length=80),
+                "success_condition": spaces.Text(max_length=40),
             }
         )
         self.reset()
@@ -386,4 +387,5 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             "production_state": deepcopy(self.production_state),
             "step_count": self.step_count,
             "current_objective": self.current_objective,
+            "success_condition": self.success_condition,
         }
