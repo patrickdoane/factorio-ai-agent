@@ -129,15 +129,22 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
         "coal_fuel_inserted": 2.00,
     }
     BURNER_ORE_BONUS = 2.00
+    BURNER_REFUEL_BONUS = 4.00
     FREEPLAY_GEAR_PENALTY = 30.00
     INVALID_ACTION_PENALTY = 0.50
+    MANUAL_ORE_PENALTY = 2.05
     MANUAL_PLATE_REWARD = 10.00
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
         observation, reward, terminated, truncated, info = self.env.step(action)
         previous_max_iron_plates = self._max_iron_plates
         shaping_reward = self._progress_reward()
-        if self._produced_manual_plate_before_burner_ore(info):
+        if self._needs_more_burner_ore() and info.get("valid_action"):
+            if action == Action.INSERT_COAL_FUEL.value and self._refuel_is_useful():
+                shaping_reward += self.BURNER_REFUEL_BONUS
+            if action == Action.MINE_IRON_ORE.value:
+                shaping_reward -= self.MANUAL_ORE_PENALTY
+        if self._produced_plate_before_burner_requirement(info):
             shaping_reward -= self.MANUAL_PLATE_REWARD
             if self.env.inventory["iron_plate"] > previous_max_iron_plates:
                 shaping_reward -= self.MILESTONE_BONUSES["iron_plate"]
@@ -161,12 +168,26 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
 
         return reward
 
-    def _produced_manual_plate_before_burner_ore(self, info: dict[str, Any]) -> bool:
+    def _produced_plate_before_burner_requirement(self, info: dict[str, Any]) -> bool:
         return (
             self.env.require_burner_miner_for_success
             and bool(info.get("produced_iron_plate"))
-            and self.env.production_state["burner_mined_iron_ore"] == 0
+            and self._needs_more_burner_ore()
         )
+
+    def _needs_more_burner_ore(self) -> bool:
+        return (
+            self.env.require_burner_miner_for_success
+            and self.env.production_state["burner_mined_iron_ore"]
+            < self.env.required_burner_mined_iron_ore
+        )
+
+    def _refuel_is_useful(self) -> bool:
+        remaining_required_ore = (
+            self.env.required_burner_mined_iron_ore
+            - self.env.production_state["burner_mined_iron_ore"]
+        )
+        return self.env.placed_entities["coal_fuel_inserted"] <= remaining_required_ore
 
     def _crafted_unneeded_freeplay_gear(self, action: int) -> bool:
         return (

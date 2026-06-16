@@ -125,6 +125,141 @@ def test_burner_progress_rewards_burner_mined_ore() -> None:
     assert info["progress_reward"] == 2.05
 
 
+def test_burner_progress_rewards_repeated_refueling_until_requirement_met() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=40,
+            target_iron_plates=11,
+            require_burner_miner_for_success=True,
+            required_burner_mined_iron_ore=3,
+            starting_inventory={
+                "burner_mining_drill": 1,
+                "stone_furnace": 1,
+                "iron_plate": 8,
+            },
+        )
+    )
+    env.reset(seed=1)
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_COAL.value,
+    ]:
+        env.step(action)
+
+    _, reward, _, _, info = env.step(int(Action.INSERT_COAL_FUEL))
+
+    assert reward == pytest.approx(3.99)
+    assert info["progress_reward"] == 4.0
+
+
+def test_burner_progress_does_not_reward_excess_refueling() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=40,
+            target_iron_plates=11,
+            require_burner_miner_for_success=True,
+            required_burner_mined_iron_ore=3,
+            starting_inventory={
+                "burner_mining_drill": 1,
+                "stone_furnace": 1,
+                "iron_plate": 8,
+            },
+        )
+    )
+    env.reset(seed=1)
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_COAL.value,
+    ]:
+        env.step(action)
+
+    _, reward, _, _, info = env.step(int(Action.INSERT_COAL_FUEL))
+
+    assert reward == pytest.approx(-0.01)
+    assert "progress_reward" not in info
+
+
+def test_burner_progress_penalizes_manual_ore_while_burner_ore_needed() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=40,
+            target_iron_plates=11,
+            require_burner_miner_for_success=True,
+            required_burner_mined_iron_ore=3,
+            starting_inventory={
+                "burner_mining_drill": 1,
+                "stone_furnace": 1,
+                "iron_plate": 8,
+            },
+        )
+    )
+    env.reset(seed=1)
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]:
+        env.step(action)
+
+    _, reward, _, _, info = env.step(int(Action.MINE_IRON_ORE))
+
+    assert reward == pytest.approx(-2.01)
+    assert info["progress_reward"] == pytest.approx(-2.0)
+
+
+def test_burner_progress_cancels_plate_reward_until_burner_requirement_met() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=40,
+            target_iron_plates=11,
+            require_burner_miner_for_success=True,
+            required_burner_mined_iron_ore=3,
+            starting_inventory={
+                "burner_mining_drill": 1,
+                "stone_furnace": 1,
+                "iron_plate": 8,
+            },
+        )
+    )
+    env.reset(seed=1)
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+        Action.MINE_IRON_ORE.value,
+    ]:
+        env.step(action)
+
+    _, reward, _, _, info = env.step(int(Action.WAIT))
+
+    assert reward == pytest.approx(-0.01)
+    assert info["progress_reward"] == -10.0
+
+
 def test_burner_progress_rewards_burner_chain_placement_milestones() -> None:
     env = BurnerProgressRewardWrapper(
         MockFactorioEnv(
