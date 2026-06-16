@@ -99,6 +99,8 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
             "models/test.zip",
             "--eval-episodes",
             "2",
+            "--algo",
+            "maskable-ppo",
             "--reward-shaping",
             "burner-progress",
         ]
@@ -112,6 +114,7 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
     assert args.seed == 42
     assert args.save_path == "models/test.zip"
     assert args.eval_episodes == 2
+    assert args.algo == "maskable-ppo"
     assert args.reward_shaping == "burner-progress"
 
 
@@ -123,6 +126,8 @@ def test_run_ppo_parser_accepts_rollout_options() -> None:
             "run-ppo",
             "--model-path",
             "models/test.zip",
+            "--model-algo",
+            "maskable-ppo",
             "--task",
             "first-plate",
             "--seed",
@@ -134,13 +139,18 @@ def test_run_ppo_parser_accepts_rollout_options() -> None:
 
     assert args.command == "run-ppo"
     assert args.model_path == "models/test.zip"
+    assert args.model_algo == "maskable-ppo"
     assert args.task == "first-plate"
     assert args.seed == 42
     assert args.max_steps == 3
 
 
 def test_run_ppo_prints_readable_rollout(capsys, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(cli_module, "_load_ppo_model", lambda _path: FakePPOModel())
+    monkeypatch.setattr(
+        cli_module,
+        "_load_ppo_model",
+        lambda _path, model_algo="ppo": FakePPOModel(),
+    )
 
     run_ppo(model_path="models/test.zip", max_steps=2, seed=42)
 

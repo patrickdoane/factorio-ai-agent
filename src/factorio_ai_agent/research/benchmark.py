@@ -45,11 +45,12 @@ def run_benchmark(
     eval_episodes: int,
     seed: int,
     model_path: str | Path | None = None,
+    model_algo: str = "ppo",
 ) -> BenchmarkSummary:
     """Run a deterministic benchmark over named tasks and return a summary."""
     if eval_episodes < 1:
         raise ValueError("eval_episodes must be at least 1.")
-    ppo_model = _load_ppo_model(model_path) if agent_name == "ppo" else None
+    ppo_model = _load_ppo_model(model_path, model_algo=model_algo) if agent_name == "ppo" else None
 
     episodes: list[BenchmarkEpisode] = []
     for task_index, task_name in enumerate(task_names):
@@ -184,19 +185,30 @@ def _git_commit() -> str:
     return result.stdout.strip() or "unknown"
 
 
-def _load_ppo_model(model_path: str | Path | None) -> object:
+def _load_ppo_model(model_path: str | Path | None, *, model_algo: str = "ppo") -> object:
     if model_path is None:
         raise ValueError("model_path is required when agent_name is 'ppo'.")
+    if model_algo not in {"ppo", "maskable-ppo"}:
+        raise ValueError("model_algo must be 'ppo' or 'maskable-ppo'.")
+
+    if model_algo == "ppo":
+        try:
+            from stable_baselines3 import PPO
+        except ImportError as error:
+            raise ImportError(
+                "Stable-Baselines3 is required to benchmark PPO models. "
+                "Install with: pip install -e '.[rl]'"
+            ) from error
+        return PPO.load(model_path, device="cpu")
 
     try:
-        from stable_baselines3 import PPO
+        from sb3_contrib import MaskablePPO
     except ImportError as error:
         raise ImportError(
-            "Stable-Baselines3 is required to benchmark PPO models. "
+            "sb3-contrib is required to benchmark MaskablePPO models. "
             "Install with: pip install -e '.[rl]'"
         ) from error
-
-    return PPO.load(model_path, device="cpu")
+    return MaskablePPO.load(model_path, device="cpu")
 
 
 def _make_mock_env(task: TaskDefinition) -> MockFactorioEnv:
@@ -261,7 +273,7 @@ def _run_ppo_episode(
     invalid_actions = 0
 
     while not terminated and not truncated:
-        action, _ = ppo_model.predict(observation, deterministic=True)  # type: ignore[attr-defined]
+        action, _ = _predict_ppo_action(ppo_model, observation, wrapped_env)
         observation, reward, terminated, truncated, info = wrapped_env.step(int(action))
         total_reward += reward
         invalid_actions += int(not info["valid_action"])
@@ -287,3 +299,17 @@ def _select_action(
     if agent_name == "scripted":
         return scripted_agent.act(observation)
     raise ValueError("agent_name must be 'scripted', 'random', or 'ppo'.")
+
+
+def _predict_ppo_action(
+    model: object,
+    observation: object,
+    env: NumericObservationWrapper,
+) -> tuple[object, object]:
+    if model.__class__.__name__ == "MaskablePPO":
+        return model.predict(  # type: ignore[attr-defined]
+            observation,
+            deterministic=True,
+            action_masks=env.action_masks(),
+        )
+    return model.predict(observation, deterministic=True)  # type: ignore[attr-defined]

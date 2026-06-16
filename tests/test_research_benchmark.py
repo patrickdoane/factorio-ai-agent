@@ -64,7 +64,7 @@ def test_random_research_benchmark_returns_summary() -> None:
 def test_ppo_research_benchmark_uses_saved_model(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     loaded_paths = []
 
-    def load_model(model_path):  # type: ignore[no-untyped-def]
+    def load_model(model_path, model_algo="ppo"):  # type: ignore[no-untyped-def]
         loaded_paths.append(model_path)
         return FakePPOModel()
 

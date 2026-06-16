@@ -96,6 +96,12 @@ Run the PPO training entry point:
 factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
 ```
 
+Train with mask-aware PPO when valid-action masking matters:
+
+```bash
+factorio-ai train-ppo --algo maskable-ppo --task freeplay-burner-first-plate --total-timesteps 50000 --reward-shaping burner-progress --save-path /tmp/opencode/maskable-freeplay-first.zip
+```
+
 Use training-only progress reward shaping for denser PPO feedback while keeping
 benchmark rewards unchanged:
 
@@ -116,8 +122,15 @@ Inspect a saved PPO policy with legible step-by-step output:
 factorio-ai run-ppo --model-path models/ppo-first.zip --task first-plate --seed 42
 ```
 
-PPO requires the optional `rl` dependency extra. Install it with `uv sync
---all-extras` or `make setup-rl`. PPO defaults to `--device cpu` because this
+Use `--model-algo maskable-ppo` when inspecting or benchmarking a MaskablePPO
+model:
+
+```bash
+factorio-ai run-ppo --model-path models/maskable-first.zip --model-algo maskable-ppo --task freeplay-burner-first-plate --seed 42
+```
+
+PPO and MaskablePPO require the optional `rl` dependency extra. Install it with
+`uv sync --all-extras` or `make setup-rl`. PPO defaults to `--device cpu` because this
 prototype uses a small MLP policy; that avoids poor GPU utilization warnings,
 especially under WSL. You can still override it with `--device cuda` when needed.
 The command also checks for a stable Python 3.11+ runtime before importing

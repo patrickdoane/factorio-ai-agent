@@ -80,6 +80,7 @@ def run_scripted(
 
 def run_ppo(
     model_path: str,
+    model_algo: str = "ppo",
     max_steps: int | None = None,
     quiet: bool = False,
     seed: int | None = None,
@@ -87,7 +88,7 @@ def run_ppo(
     task_name: str = "first-plate",
 ) -> EpisodeResult:
     """Run a saved PPO policy with readable per-step output."""
-    model = _load_ppo_model(model_path)
+    model = _load_ppo_model(model_path, model_algo=model_algo)
     task = resolve_task(
         task_name,
         max_steps=max_steps,
@@ -110,7 +111,7 @@ def run_ppo(
         print(format_episode_header("ppo", 1))
 
     while not terminated and not truncated:
-        action, _ = model.predict(observation, deterministic=True)  # type: ignore[attr-defined]
+        action, _ = _predict_ppo_action(model, observation, wrapped_env)
         observation, reward, terminated, truncated, info = wrapped_env.step(int(action))
         total_reward += reward
         if not quiet:
@@ -172,6 +173,7 @@ def run_research_benchmark(
     seed: int,
     append_results: str | None = None,
     model_path: str | None = None,
+    model_algo: str = "ppo",
 ) -> None:
     """Run the deterministic research benchmark and print the final summary."""
     task_names = parse_task_names(tasks)
@@ -181,6 +183,7 @@ def run_research_benchmark(
         eval_episodes=eval_episodes,
         seed=seed,
         model_path=model_path,
+        model_algo=model_algo,
     )
     print(format_benchmark_summary(summary))
     if append_results:
@@ -192,6 +195,20 @@ def run_research_benchmark(
             seed=seed,
         )
         print(f"Appended benchmark result to {path}")
+
+
+def _predict_ppo_action(
+    model: object,
+    observation: object,
+    env: NumericObservationWrapper,
+) -> tuple[object, object]:
+    if model.__class__.__name__ == "MaskablePPO":
+        return model.predict(  # type: ignore[attr-defined]
+            observation,
+            deterministic=True,
+            action_masks=env.action_masks(),
+        )
+    return model.predict(observation, deterministic=True)  # type: ignore[attr-defined]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -221,6 +238,12 @@ def build_parser() -> argparse.ArgumentParser:
         "run-ppo", help="Run a saved PPO policy with readable step output."
     )
     ppo_parser.add_argument("--model-path", required=True)
+    ppo_parser.add_argument(
+        "--model-algo",
+        choices=["ppo", "maskable-ppo"],
+        default="ppo",
+        help="Saved model type to load.",
+    )
     ppo_parser.add_argument("--task", choices=task_names(), default="first-plate")
     ppo_parser.add_argument("--max-steps", type=int, default=None)
     ppo_parser.add_argument("--seed", type=int, default=None)
@@ -256,6 +279,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a saved PPO model when using --agent ppo.",
     )
     benchmark_parser.add_argument(
+        "--model-algo",
+        choices=["ppo", "maskable-ppo"],
+        default="ppo",
+        help="Saved model type when using --agent ppo.",
+    )
+    benchmark_parser.add_argument(
         "--append-results",
         nargs="?",
         const="results.tsv",
@@ -275,6 +304,12 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument("--seed", type=int, default=None)
     train_parser.add_argument("--save-path", default=None)
     train_parser.add_argument("--eval-episodes", type=int, default=0)
+    train_parser.add_argument(
+        "--algo",
+        choices=["ppo", "maskable-ppo"],
+        default="ppo",
+        help="RL algorithm to train. maskable-ppo consumes valid action masks.",
+    )
     train_parser.add_argument(
         "--reward-shaping",
         choices=["none", "progress", "burner-progress"],
@@ -311,6 +346,7 @@ def main() -> None:
     elif args.command == "run-ppo":
         run_ppo(
             model_path=args.model_path,
+            model_algo=args.model_algo,
             max_steps=args.max_steps,
             quiet=args.quiet,
             seed=args.seed,
@@ -337,6 +373,7 @@ def main() -> None:
             seed=args.seed,
             append_results=args.append_results,
             model_path=args.model_path,
+            model_algo=args.model_algo,
         )
     elif args.command == "train-ppo":
         train_ppo(
@@ -350,6 +387,7 @@ def main() -> None:
             save_path=args.save_path,
             eval_episodes=args.eval_episodes,
             reward_shaping=args.reward_shaping,
+            algo=args.algo,
         )
     elif args.command == "list-tasks":
         for task_name in task_names():

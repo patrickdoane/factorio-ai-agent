@@ -23,6 +23,25 @@ def test_train_ppo_without_optional_dependency_prints_install_hint(
     assert "Stable-Baselines3 is not installed" in output
 
 
+def test_train_maskable_ppo_without_optional_dependency_prints_install_hint(
+    capsys, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(train_ppo_module, "_runtime_supports_torch", lambda: True)
+    monkeypatch.setitem(sys.modules, "sb3_contrib", None)
+
+    train_ppo_module.train_ppo(
+        total_timesteps=1,
+        task_name="first-plate",
+        n_steps=64,
+        batch_size=32,
+        algo="maskable-ppo",
+    )
+
+    output = capsys.readouterr().out
+
+    assert "sb3-contrib is not installed" in output
+
+
 def test_train_ppo_preflight_prints_runtime_hint(capsys, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(train_ppo_module, "_runtime_supports_torch", lambda: False)
 
@@ -46,6 +65,11 @@ def test_train_ppo_rejects_negative_eval_episodes() -> None:
 def test_train_ppo_rejects_unknown_reward_shaping() -> None:
     with pytest.raises(ValueError, match="reward_shaping"):
         train_ppo_module.train_ppo(reward_shaping="unknown")
+
+
+def test_train_ppo_rejects_unknown_algo() -> None:
+    with pytest.raises(ValueError, match="algo"):
+        train_ppo_module.train_ppo(algo="unknown")
 
 
 def test_make_training_env_applies_progress_reward_shaping() -> None:

@@ -25,6 +25,7 @@ def train_ppo(
     save_path: str | None = None,
     eval_episodes: int = 0,
     reward_shaping: str = "none",
+    algo: str = "ppo",
 ) -> None:
     """Train PPO on the mock environment when optional RL dependencies exist."""
     _validate_ppo_config(
@@ -32,6 +33,7 @@ def train_ppo(
         batch_size=batch_size,
         eval_episodes=eval_episodes,
         reward_shaping=reward_shaping,
+        algo=algo,
     )
 
     if not _runtime_supports_torch():
@@ -39,13 +41,13 @@ def train_ppo(
         return
 
     try:
-        from stable_baselines3 import PPO
-    except ImportError:
-        print("Stable-Baselines3 is not installed. Install with: pip install -e .[rl]")
+        model_class = _import_model_class(algo)
+    except ImportError as error:
+        print(f"{error} Install with: pip install -e '.[rl]'")
         return
 
     env = _make_training_env(task_name, reward_shaping=reward_shaping)
-    model = PPO(
+    model = model_class(
         "MlpPolicy",
         env,
         verbose=1,
@@ -61,12 +63,34 @@ def train_ppo(
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         model.save(path)
-        print(f"Saved PPO model to {path}")
+        print(f"Saved {algo} model to {path}")
 
     if eval_episodes > 0:
-        _evaluate_model(model, task_name=task_name, episodes=eval_episodes, seed=seed)
+        _evaluate_model(
+            model,
+            task_name=task_name,
+            episodes=eval_episodes,
+            seed=seed,
+            label=algo,
+        )
 
-    print("Finished PPO training demo.")
+    print(f"Finished {algo} training demo.")
+
+
+def _import_model_class(algo: str) -> type:
+    if algo == "ppo":
+        try:
+            from stable_baselines3 import PPO
+        except ImportError as error:
+            raise ImportError("Stable-Baselines3 is not installed.") from error
+        return PPO
+    if algo == "maskable-ppo":
+        try:
+            from sb3_contrib import MaskablePPO
+        except ImportError as error:
+            raise ImportError("sb3-contrib is not installed.") from error
+        return MaskablePPO
+    raise ValueError("algo must be 'ppo' or 'maskable-ppo'.")
 
 
 def _make_training_env(
@@ -97,6 +121,7 @@ def _evaluate_model(
     task_name: str,
     episodes: int,
     seed: int | None,
+    label: str = "ppo",
 ) -> None:
     successes = 0
     total_steps = 0
@@ -108,7 +133,7 @@ def _evaluate_model(
         truncated = False
 
         while not terminated and not truncated:
-            action, _ = model.predict(observation, deterministic=True)  # type: ignore[attr-defined]
+            action, _ = _predict_action(model, observation, env, deterministic=True)
             observation, _, terminated, truncated, _ = env.step(int(action))
 
         successes += int(terminated)
@@ -117,7 +142,7 @@ def _evaluate_model(
     success_rate = successes / episodes
     avg_steps = total_steps / episodes
     print(
-        "PPO eval: "
+        f"{label} eval: "
         f"episodes={episodes} success_rate={success_rate * 100:.1f}% "
         f"avg_steps={avg_steps:.1f}"
     )
@@ -128,6 +153,7 @@ def _validate_ppo_config(
     batch_size: int,
     eval_episodes: int,
     reward_shaping: str = "none",
+    algo: str = "ppo",
 ) -> None:
     if n_steps < 2:
         raise ValueError("n_steps must be at least 2 for PPO.")
@@ -141,6 +167,24 @@ def _validate_ppo_config(
         raise ValueError(
             "reward_shaping must be 'none', 'progress', or 'burner-progress'."
         )
+    if algo not in {"ppo", "maskable-ppo"}:
+        raise ValueError("algo must be 'ppo' or 'maskable-ppo'.")
+
+
+def _predict_action(
+    model: object,
+    observation: object,
+    env: NumericObservationWrapper,
+    *,
+    deterministic: bool,
+) -> tuple[object, object]:
+    if model.__class__.__name__ == "MaskablePPO":
+        return model.predict(  # type: ignore[attr-defined]
+            observation,
+            deterministic=deterministic,
+            action_masks=env.action_masks(),
+        )
+    return model.predict(observation, deterministic=deterministic)  # type: ignore[attr-defined]
 
 
 def _runtime_supports_torch() -> bool:
