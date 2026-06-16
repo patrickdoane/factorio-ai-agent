@@ -54,7 +54,7 @@ TASKS: dict[str, TaskDefinition] = {
         name="burner-first-plate",
         description="Produce one iron plate after building and fueling a burner miner.",
         target_iron_plates=1,
-        max_steps=50,
+        max_steps=80,
         require_burner_miner_for_success=True,
     ),
     "burner-three-plates": TaskDefinition(

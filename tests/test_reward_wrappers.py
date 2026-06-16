@@ -40,22 +40,14 @@ def test_progress_reward_wrapper_rewards_crafting_milestone() -> None:
 def test_progress_reward_wrapper_does_not_reward_repeated_milestone() -> None:
     env = ProgressRewardWrapper(MockFactorioEnv(max_steps=30))
     env.reset(seed=1)
-    for _ in range(3):
-        env.step(int(Action.MINE_IRON_ORE))
-    for _ in range(3):
+    for _ in range(10):
         env.step(int(Action.MINE_STONE))
 
-    _, reward, _, _, info = env.step(int(Action.CRAFT_BURNER_MINING_DRILL))
-    assert reward == 0.74
-    assert info["progress_reward"] == 0.75
+    _, reward, _, _, info = env.step(int(Action.CRAFT_STONE_FURNACE))
+    assert reward == 0.49
+    assert info["progress_reward"] == 0.50
 
-    env.step(int(Action.PLACE_BURNER_MINING_DRILL))
-    for _ in range(3):
-        env.step(int(Action.MINE_IRON_ORE))
-    for _ in range(3):
-        env.step(int(Action.MINE_STONE))
-
-    _, reward, _, _, info = env.step(int(Action.CRAFT_BURNER_MINING_DRILL))
+    _, reward, _, _, info = env.step(int(Action.CRAFT_STONE_FURNACE))
 
     assert reward == -0.01
     assert "progress_reward" not in info
@@ -83,13 +75,14 @@ def test_burner_progress_penalizes_manual_plate_shortcut() -> None:
 
 def test_burner_progress_rewards_burner_mined_ore() -> None:
     env = BurnerProgressRewardWrapper(
-        MockFactorioEnv(max_steps=30, require_burner_miner_for_success=True)
+        MockFactorioEnv(
+            max_steps=30,
+            require_burner_miner_for_success=True,
+            starting_inventory={"burner_mining_drill": 1},
+        )
     )
     env.reset(seed=1)
     for action in [
-        *[Action.MINE_IRON_ORE.value] * 3,
-        *[Action.MINE_STONE.value] * 3,
-        Action.CRAFT_BURNER_MINING_DRILL.value,
         Action.PLACE_BURNER_MINING_DRILL.value,
         Action.MINE_COAL.value,
         Action.INSERT_COAL_FUEL.value,
@@ -99,5 +92,5 @@ def test_burner_progress_rewards_burner_mined_ore() -> None:
 
     _, reward, _, _, info = env.step(int(Action.WAIT))
 
-    assert reward == pytest.approx(1.99)
-    assert info["progress_reward"] == 2.0
+    assert reward == pytest.approx(2.04)
+    assert info["progress_reward"] == 2.05

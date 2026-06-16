@@ -18,6 +18,7 @@ INVENTORY_KEYS = (
     "stone_furnace",
     "burner_mining_drill",
     "iron_plate",
+    "iron_gear_wheel",
 )
 PLACED_ENTITY_KEYS = (
     "stone_furnace",
@@ -28,6 +29,8 @@ PRODUCTION_STATE_KEYS = (
     "miner_progress",
     "furnace_progress",
     "target_iron_plates",
+    "burner_mined_iron_ore",
+    "required_burner_mined_iron_ore",
 )
 
 

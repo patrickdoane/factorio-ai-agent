@@ -161,10 +161,18 @@ factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates
 
 - Mine iron ore, coal, and stone.
 - Craft a stone furnace.
+- Craft iron gear wheels.
 - Craft a burner mining drill.
 - Place the furnace and burner miner.
 - Insert coal fuel.
 - Wait for the miner and furnace production timers to produce iron plates.
+
+The mock early-game recipes are intentionally closer to vanilla Factorio than
+the original prototype:
+
+- `5 stone -> 1 stone_furnace`
+- `2 iron_plate -> 1 iron_gear_wheel`
+- `3 iron_plate + 3 iron_gear_wheel + 1 stone_furnace -> 1 burner_mining_drill`
 
 The observation is a dictionary containing:
 
@@ -193,6 +201,11 @@ For reinforcement learning experiments, `NumericObservationWrapper` converts the
 mock dictionary observation into a fixed numeric vector and drops the string
 objective. This keeps the default environment readable while giving PPO a simple
 `Box` observation space.
+
+Recipe-realism changes add `iron_gear_wheel` and burner-chain production fields
+to numeric observations and add a new discrete action. PPO models trained before
+these changes should be treated as historical artifacts rather than compatible
+policies for current tasks.
 
 The mock environment and numeric wrapper also expose `action_masks()`, returning
 a NumPy boolean mask of valid discrete actions. Standard Stable-Baselines3 PPO

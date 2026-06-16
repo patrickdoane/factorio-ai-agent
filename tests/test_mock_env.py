@@ -17,6 +17,7 @@ def test_reset_returns_expected_observation_shape() -> None:
     assert observation["production_state"]["furnace_progress"] == 0
     assert observation["production_state"]["target_iron_plates"] == 1
     assert observation["production_state"]["burner_mined_iron_ore"] == 0
+    assert observation["production_state"]["required_burner_mined_iron_ore"] == 0
     assert observation["step_count"] == 0
     assert observation["current_objective"] == "Mine resources"
 
@@ -109,29 +110,26 @@ def test_action_mask_allows_crafting_after_resources_are_available() -> None:
     assert mask[Action.CRAFT_STONE_FURNACE.value]
     assert not mask[Action.CRAFT_BURNER_MINING_DRILL.value]
 
-    env.step(Action.CRAFT_STONE_FURNACE.value)
-    for _ in range(4):
-        env.step(Action.MINE_IRON_ORE.value)
-    for _ in range(3):
-        env.step(Action.MINE_STONE.value)
+    env = MockFactorioEnv(
+        starting_inventory={
+            "stone_furnace": 1,
+            "iron_plate": 3,
+            "iron_gear_wheel": 3,
+        }
+    )
+    env.reset()
 
     mask = env.valid_action_mask()
 
     assert mask[Action.CRAFT_BURNER_MINING_DRILL.value]
+    assert mask[Action.CRAFT_IRON_GEAR_WHEEL.value]
 
 
 def test_action_mask_allows_placement_and_fueling_when_ready() -> None:
-    env = MockFactorioEnv()
+    env = MockFactorioEnv(
+        starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1}
+    )
     env.reset()
-
-    for action in [
-        *[Action.MINE_STONE.value] * 5,
-        Action.CRAFT_STONE_FURNACE.value,
-        *[Action.MINE_IRON_ORE.value] * 4,
-        *[Action.MINE_STONE.value] * 3,
-        Action.CRAFT_BURNER_MINING_DRILL.value,
-    ]:
-        env.step(action)
 
     mask = env.valid_action_mask()
 
@@ -161,13 +159,8 @@ def test_manual_sequence_produces_first_iron_plate() -> None:
     actions = [
         *[Action.MINE_STONE.value] * 5,
         Action.CRAFT_STONE_FURNACE.value,
-        *[Action.MINE_IRON_ORE.value] * 4,
-        *[Action.MINE_STONE.value] * 3,
-        Action.CRAFT_BURNER_MINING_DRILL.value,
         Action.PLACE_STONE_FURNACE.value,
-        Action.PLACE_BURNER_MINING_DRILL.value,
-        Action.MINE_COAL.value,
-        Action.INSERT_COAL_FUEL.value,
+        Action.MINE_IRON_ORE.value,
         Action.WAIT.value,
         Action.WAIT.value,
     ]
@@ -245,15 +238,12 @@ def test_burner_required_success_can_use_explicit_burner_ore_goal() -> None:
 
 
 def test_wait_advances_miner_and_furnace_production_timing() -> None:
-    env = MockFactorioEnv()
+    env = MockFactorioEnv(
+        starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1}
+    )
     observation, _ = env.reset()
 
     actions = [
-        *[Action.MINE_STONE.value] * 5,
-        Action.CRAFT_STONE_FURNACE.value,
-        *[Action.MINE_IRON_ORE.value] * 4,
-        *[Action.MINE_STONE.value] * 3,
-        Action.CRAFT_BURNER_MINING_DRILL.value,
         Action.PLACE_STONE_FURNACE.value,
         Action.PLACE_BURNER_MINING_DRILL.value,
         Action.MINE_COAL.value,
@@ -269,8 +259,19 @@ def test_wait_advances_miner_and_furnace_production_timing() -> None:
     observation, reward, terminated, truncated, info = env.step(Action.WAIT.value)
 
     assert observation["production_state"]["miner_progress"] == 1
-    assert observation["production_state"]["furnace_progress"] == 1
+    assert observation["production_state"]["furnace_progress"] == 0
     assert observation["inventory"]["iron_plate"] == 0
+    assert reward == pytest.approx(-0.01)
+    assert not terminated
+    assert "produced_iron_plate" not in info
+
+    observation, reward, terminated, truncated, info = env.step(Action.WAIT.value)
+
+    assert observation["inventory"]["iron_plate"] == 0
+    assert observation["placed_entities"]["coal_fuel_inserted"] == 0
+    assert observation["production_state"]["burner_mined_iron_ore"] == 1
+    assert observation["production_state"]["miner_progress"] == 0
+    assert observation["production_state"]["furnace_progress"] == 1
     assert reward == pytest.approx(-0.01)
     assert not terminated
     assert "produced_iron_plate" not in info

@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (13,)
+    assert observation.shape == (16,)
     assert env.observation_space.contains(observation)
 
 
@@ -32,7 +32,10 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         0.0,
         0.0,
         0.0,
+        0.0,
         1.0,
+        0.0,
+        0.0,
         1.0,
     ]
 

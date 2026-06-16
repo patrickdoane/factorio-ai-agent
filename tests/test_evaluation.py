@@ -14,7 +14,7 @@ def test_run_episode_returns_successful_scripted_summary(capsys) -> None:  # typ
     assert result.success
     assert result.terminated
     assert not result.truncated
-    assert result.steps == 20
+    assert result.steps == 10
     assert result.goal == "Produce 1 iron plate"
     assert result.status == "Task complete"
     assert result.final_objective == "Task complete"
@@ -47,7 +47,7 @@ def test_summarize_results_handles_empty_and_non_empty_results() -> None:
 
     assert summary["episodes"] == 1.0
     assert summary["success_rate"] == 1.0
-    assert summary["avg_steps"] == 20.0
+    assert summary["avg_steps"] == 10.0
 
 
 def test_format_summary_returns_human_readable_block() -> None:
