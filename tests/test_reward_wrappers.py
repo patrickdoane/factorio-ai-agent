@@ -176,5 +176,5 @@ def test_burner_progress_penalizes_unneeded_freeplay_gears() -> None:
 
     _, reward, _, _, info = env.step(int(Action.CRAFT_IRON_GEAR_WHEEL))
 
-    assert reward == pytest.approx(-2.01)
-    assert info["progress_reward"] == -2.0
+    assert reward == pytest.approx(-30.01)
+    assert info["progress_reward"] == -30.0

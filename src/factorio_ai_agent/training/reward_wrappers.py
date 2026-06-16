@@ -129,7 +129,7 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
         "coal_fuel_inserted": 2.00,
     }
     BURNER_ORE_BONUS = 2.00
-    FREEPLAY_GEAR_PENALTY = 2.00
+    FREEPLAY_GEAR_PENALTY = 30.00
     INVALID_ACTION_PENALTY = 0.50
     MANUAL_PLATE_REWARD = 10.00
 
