@@ -272,6 +272,12 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument("--seed", type=int, default=None)
     train_parser.add_argument("--save-path", default=None)
     train_parser.add_argument("--eval-episodes", type=int, default=0)
+    train_parser.add_argument(
+        "--reward-shaping",
+        choices=["none", "progress"],
+        default="none",
+        help="Optional training-only reward shaping. Benchmark rewards are unchanged.",
+    )
 
     tasks_parser = subparsers.add_parser("list-tasks", help="List available mock tasks.")
     tasks_parser.set_defaults(command="list-tasks")
@@ -340,6 +346,7 @@ def main() -> None:
             seed=args.seed,
             save_path=args.save_path,
             eval_episodes=args.eval_episodes,
+            reward_shaping=args.reward_shaping,
         )
     elif args.command == "list-tasks":
         for task_name in task_names():

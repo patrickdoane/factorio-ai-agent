@@ -89,6 +89,13 @@ Run the PPO training entry point:
 factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
 ```
 
+Use training-only progress reward shaping for denser PPO feedback while keeping
+benchmark rewards unchanged:
+
+```bash
+factorio-ai train-ppo --task first-plate --total-timesteps 50000 --reward-shaping progress --save-path /tmp/opencode/ppo-shaped-first.zip
+```
+
 Inspect a saved PPO policy with legible step-by-step output:
 
 ```bash

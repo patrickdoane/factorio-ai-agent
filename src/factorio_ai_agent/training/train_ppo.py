@@ -8,6 +8,7 @@ from pathlib import Path
 from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv
 from factorio_ai_agent.envs.numeric_observation_wrapper import NumericObservationWrapper
 from factorio_ai_agent.tasks import resolve_task
+from factorio_ai_agent.training.reward_wrappers import ProgressRewardWrapper
 
 
 def train_ppo(
@@ -20,9 +21,15 @@ def train_ppo(
     seed: int | None = None,
     save_path: str | None = None,
     eval_episodes: int = 0,
+    reward_shaping: str = "none",
 ) -> None:
     """Train PPO on the mock environment when optional RL dependencies exist."""
-    _validate_ppo_config(n_steps=n_steps, batch_size=batch_size, eval_episodes=eval_episodes)
+    _validate_ppo_config(
+        n_steps=n_steps,
+        batch_size=batch_size,
+        eval_episodes=eval_episodes,
+        reward_shaping=reward_shaping,
+    )
 
     if not _runtime_supports_torch():
         print(_runtime_error_message())
@@ -34,7 +41,7 @@ def train_ppo(
         print("Stable-Baselines3 is not installed. Install with: pip install -e .[rl]")
         return
 
-    env = _make_training_env(task_name)
+    env = _make_training_env(task_name, reward_shaping=reward_shaping)
     model = PPO(
         "MlpPolicy",
         env,
@@ -59,13 +66,20 @@ def train_ppo(
     print("Finished PPO training demo.")
 
 
-def _make_training_env(task_name: str) -> NumericObservationWrapper:
+def _make_training_env(
+    task_name: str,
+    *,
+    reward_shaping: str = "none",
+) -> NumericObservationWrapper:
     task = resolve_task(task_name)
+    env = MockFactorioEnv(
+        max_steps=task.max_steps,
+        target_iron_plates=task.target_iron_plates,
+    )
+    if reward_shaping == "progress":
+        env = ProgressRewardWrapper(env)  # type: ignore[assignment]
     return NumericObservationWrapper(
-        MockFactorioEnv(
-            max_steps=task.max_steps,
-            target_iron_plates=task.target_iron_plates,
-        )
+        env
     )
 
 
@@ -101,7 +115,12 @@ def _evaluate_model(
     )
 
 
-def _validate_ppo_config(n_steps: int, batch_size: int, eval_episodes: int) -> None:
+def _validate_ppo_config(
+    n_steps: int,
+    batch_size: int,
+    eval_episodes: int,
+    reward_shaping: str = "none",
+) -> None:
     if n_steps < 2:
         raise ValueError("n_steps must be at least 2 for PPO.")
     if batch_size < 1:
@@ -110,6 +129,8 @@ def _validate_ppo_config(n_steps: int, batch_size: int, eval_episodes: int) -> N
         raise ValueError("batch_size must be less than or equal to n_steps.")
     if eval_episodes < 0:
         raise ValueError("eval_episodes must be zero or greater.")
+    if reward_shaping not in {"none", "progress"}:
+        raise ValueError("reward_shaping must be 'none' or 'progress'.")
 
 
 def _runtime_supports_torch() -> bool:

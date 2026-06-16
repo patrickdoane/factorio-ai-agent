@@ -1,0 +1,109 @@
+"""Training-only reward wrappers for learning experiments."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import gymnasium as gym
+
+from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv, Observation
+
+
+class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
+    """Add dense training rewards for irreversible task progress.
+
+    This wrapper is intentionally used only for training. Benchmarking and normal
+    environment evaluation continue to use the unshaped environment rewards.
+    """
+
+    RESOURCE_TARGETS = {
+        "stone": 8,
+        "iron_ore": 3,
+        "coal": 1,
+    }
+    RESOURCE_BONUS = 0.05
+    MILESTONE_BONUSES = {
+        "stone_furnace": 0.50,
+        "burner_mining_drill": 0.75,
+        "placed_stone_furnace": 0.50,
+        "placed_burner_mining_drill": 0.75,
+        "coal_fuel_inserted": 0.50,
+        "iron_plate": 1.00,
+    }
+
+    def __init__(self, env: MockFactorioEnv) -> None:
+        super().__init__(env)
+        self._max_resource_counts = dict.fromkeys(self.RESOURCE_TARGETS, 0)
+        self._achieved_milestones: set[str] = set()
+        self._max_iron_plates = 0
+
+    @property
+    def unwrapped_env(self) -> MockFactorioEnv:
+        return self.env
+
+    def action_masks(self):  # type: ignore[no-untyped-def]
+        return self.env.action_masks()
+
+    def reset(self, **kwargs: Any) -> tuple[Observation, dict[str, Any]]:
+        observation, info = self.env.reset(**kwargs)
+        self._max_resource_counts = {
+            resource: min(self.env.inventory[resource], target)
+            for resource, target in self.RESOURCE_TARGETS.items()
+        }
+        self._achieved_milestones = set()
+        self._max_iron_plates = self.env.inventory["iron_plate"]
+        return observation, info
+
+    def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        shaping_reward = self._progress_reward()
+        if shaping_reward:
+            info["progress_reward"] = shaping_reward
+        return observation, reward + shaping_reward, terminated, truncated, info
+
+    def _progress_reward(self) -> float:
+        reward = 0.0
+
+        for resource, target in self.RESOURCE_TARGETS.items():
+            previous_max = self._max_resource_counts[resource]
+            current_count = min(self.env.inventory[resource], target)
+            if current_count > previous_max:
+                reward += (current_count - previous_max) * self.RESOURCE_BONUS
+                self._max_resource_counts[resource] = current_count
+
+        reward += self._first_milestone_reward(
+            self.env.inventory["stone_furnace"] > 0,
+            "stone_furnace",
+        )
+        reward += self._first_milestone_reward(
+            self.env.inventory["burner_mining_drill"] > 0,
+            "burner_mining_drill",
+        )
+        reward += self._first_milestone_reward(
+            self.env.placed_entities["stone_furnace"] > 0,
+            "placed_stone_furnace",
+        )
+        reward += self._first_milestone_reward(
+            self.env.placed_entities["burner_mining_drill"] > 0,
+            "placed_burner_mining_drill",
+        )
+        reward += self._first_milestone_reward(
+            self.env.placed_entities["coal_fuel_inserted"] > 0,
+            "coal_fuel_inserted",
+        )
+        if self.env.inventory["iron_plate"] > self._max_iron_plates:
+            reward += (
+                self.env.inventory["iron_plate"] - self._max_iron_plates
+            ) * self.MILESTONE_BONUSES["iron_plate"]
+            self._max_iron_plates = self.env.inventory["iron_plate"]
+        return reward
+
+    def _first_milestone_reward(
+        self,
+        achieved: bool,
+        bonus_key: str,
+    ) -> float:
+        if not achieved or bonus_key in self._achieved_milestones:
+            return 0.0
+        self._achieved_milestones.add(bonus_key)
+        return self.MILESTONE_BONUSES[bonus_key]

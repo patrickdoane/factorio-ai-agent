@@ -41,3 +41,21 @@ def test_train_ppo_rejects_invalid_rollout_config() -> None:
 def test_train_ppo_rejects_negative_eval_episodes() -> None:
     with pytest.raises(ValueError, match="eval_episodes"):
         train_ppo_module.train_ppo(eval_episodes=-1)
+
+
+def test_train_ppo_rejects_unknown_reward_shaping() -> None:
+    with pytest.raises(ValueError, match="reward_shaping"):
+        train_ppo_module.train_ppo(reward_shaping="unknown")
+
+
+def test_make_training_env_applies_progress_reward_shaping() -> None:
+    env = train_ppo_module._make_training_env(  # type: ignore[attr-defined]
+        "first-plate",
+        reward_shaping="progress",
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(2)
+
+    assert reward == 0.04
+    assert info["progress_reward"] == 0.05
