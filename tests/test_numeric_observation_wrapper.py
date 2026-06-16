@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (25,)
+    assert observation.shape == (28,)
     assert env.observation_space.contains(observation)
 
 
@@ -38,7 +38,10 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         0.0,
         0.0,
         0.0,
+        0.0,
         1.0,
+        0.0,
+        0.0,
         0.0,
         0.0,
         0.0,
@@ -56,7 +59,7 @@ def test_numeric_wrapper_encodes_success_condition() -> None:
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-8:-1] == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    assert observation.tolist()[-10:-1] == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
 
 def test_numeric_wrapper_distinguishes_buffered_plate_success_condition() -> None:
@@ -66,7 +69,7 @@ def test_numeric_wrapper_distinguishes_buffered_plate_success_condition() -> Non
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-8:-1] == [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    assert observation.tolist()[-10:-1] == [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
 def test_numeric_wrapper_distinguishes_collected_plate_success_condition() -> None:
@@ -76,7 +79,27 @@ def test_numeric_wrapper_distinguishes_collected_plate_success_condition() -> No
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-8:-1] == [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+    assert observation.tolist()[-10:-1] == [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+
+def test_numeric_wrapper_distinguishes_buffered_ore_success_condition() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(success_condition="buffered_iron_ore")
+    )
+
+    observation, _ = env.reset()
+
+    assert observation.tolist()[-10:-1] == [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+
+def test_numeric_wrapper_distinguishes_collected_ore_success_condition() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(success_condition="collected_iron_ore")
+    )
+
+    observation, _ = env.reset()
+
+    assert observation.tolist()[-10:-1] == [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 
 
 def test_numeric_wrapper_distinguishes_smelted_plate_success_condition() -> None:
@@ -86,7 +109,7 @@ def test_numeric_wrapper_distinguishes_smelted_plate_success_condition() -> None
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-8:-1] == [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+    assert observation.tolist()[-10:-1] == [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
 
 
 def test_numeric_wrapper_exposes_furnace_output_buffer() -> None:
@@ -129,6 +152,28 @@ def test_numeric_wrapper_exposes_furnace_input_buffer() -> None:
     observation, _, _, _, _ = env.step(Action.INSERT_IRON_ORE_INTO_FURNACE.value)
 
     assert observation.tolist()[16] == 1.0
+
+
+def test_numeric_wrapper_exposes_miner_output_buffer() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(
+            starting_inventory={"burner_mining_drill": 1},
+            success_condition="buffered_iron_ore",
+            use_miner_output_buffer=True,
+        )
+    )
+    env.reset()
+
+    for action in [
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+    ]:
+        env.step(action)
+    observation, _, _, _, _ = env.step(Action.WAIT.value)
+
+    assert observation.tolist()[17] == 1.0
 
 
 def test_numeric_wrapper_exposes_action_masks() -> None:

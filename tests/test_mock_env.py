@@ -19,6 +19,8 @@ def test_reset_returns_expected_observation_shape() -> None:
     assert observation["production_state"]["burner_mined_iron_ore"] == 0
     assert observation["production_state"]["required_burner_mined_iron_ore"] == 0
     assert observation["production_state"]["furnace_output_iron_plate"] == 0
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert observation["production_state"]["miner_output_iron_ore"] == 0
     assert observation["step_count"] == 0
     assert observation["current_objective"] == "Craft stone furnace"
 
@@ -414,6 +416,95 @@ def test_wait_advances_miner_and_furnace_production_timing() -> None:
     assert terminated
     assert not truncated
     assert info["produced_iron_plate"] is True
+
+
+def test_burner_miner_output_buffer_stores_ore_outside_inventory() -> None:
+    env = MockFactorioEnv(
+        max_steps=8,
+        target_iron_plates=1,
+        starting_inventory={"burner_mining_drill": 1},
+        success_condition="buffered_iron_ore",
+        use_miner_output_buffer=True,
+    )
+    observation, _ = env.reset()
+
+    assert observation["current_objective"] == "Place burner mining drill"
+    assert observation["success_condition"] == "buffered_iron_ore"
+    assert not env.valid_action_mask()[Action.TAKE_MINER_OUTPUT.value]
+    assert not env.valid_action_mask()[Action.WAIT.value]
+
+    for action in [
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]:
+        observation, reward, terminated, truncated, info = env.step(action)
+
+    assert observation["inventory"]["iron_ore"] == 0
+    assert observation["production_state"]["miner_output_iron_ore"] == 1
+    assert observation["production_state"]["burner_mined_iron_ore"] == 1
+    assert observation["current_objective"] == "Task complete"
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["valid_action"] is True
+
+
+def test_burner_miner_output_collection_moves_ore_to_inventory() -> None:
+    env = MockFactorioEnv(
+        max_steps=10,
+        target_iron_plates=1,
+        starting_inventory={"burner_mining_drill": 1},
+        success_condition="collected_iron_ore",
+        use_miner_output_buffer=True,
+    )
+    env.reset()
+
+    for action in [
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["iron_ore"] == 0
+    assert observation["production_state"]["miner_output_iron_ore"] == 1
+    assert observation["current_objective"] == "Collect miner output"
+    assert env.valid_actions() == [Action.TAKE_MINER_OUTPUT.value]
+    assert not terminated
+    assert not truncated
+
+    observation, reward, terminated, truncated, info = env.step(Action.TAKE_MINER_OUTPUT.value)
+
+    assert observation["inventory"]["iron_ore"] == 1
+    assert observation["production_state"]["miner_output_iron_ore"] == 0
+    assert observation["current_objective"] == "Task complete"
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["valid_action"] is True
+
+
+def test_taking_empty_miner_output_is_invalid() -> None:
+    env = MockFactorioEnv(
+        starting_inventory={"burner_mining_drill": 1},
+        success_condition="collected_iron_ore",
+        use_miner_output_buffer=True,
+    )
+    env.reset()
+
+    observation, reward, terminated, truncated, info = env.step(Action.TAKE_MINER_OUTPUT.value)
+
+    assert observation["inventory"]["iron_ore"] == 0
+    assert observation["production_state"]["miner_output_iron_ore"] == 0
+    assert reward == pytest.approx(-0.06)
+    assert info["valid_action"] is False
+    assert not terminated
+    assert not truncated
 
 
 def test_buffered_furnace_output_stores_plate_outside_inventory() -> None:

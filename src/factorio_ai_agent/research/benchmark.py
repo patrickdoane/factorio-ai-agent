@@ -221,6 +221,7 @@ def _make_mock_env(task: TaskDefinition) -> MockFactorioEnv:
         success_condition=task.success_condition,
         use_furnace_output_buffer=task.use_furnace_output_buffer,
         use_furnace_input_buffer=task.use_furnace_input_buffer,
+        use_miner_output_buffer=task.use_miner_output_buffer,
     )
 
 

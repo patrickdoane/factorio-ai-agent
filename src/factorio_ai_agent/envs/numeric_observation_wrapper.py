@@ -33,11 +33,14 @@ PRODUCTION_STATE_KEYS = (
     "required_burner_mined_iron_ore",
     "furnace_output_iron_plate",
     "furnace_input_iron_ore",
+    "miner_output_iron_ore",
 )
 SUCCESS_CONDITIONS = (
     "iron_plates",
     "buffered_iron_plates",
     "collected_iron_plates",
+    "buffered_iron_ore",
+    "collected_iron_ore",
     "smelted_iron_plates",
     "stone_furnace_crafted",
     "burner_mining_drill_crafted",
