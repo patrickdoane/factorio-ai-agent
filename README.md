@@ -17,6 +17,8 @@ eventually speedrun-style optimization. The mock environment is a controlled,
 deterministic training and evaluation ladder before real Factorio integration;
 benchmark improvements should reflect better agent behavior, not changed task or
 scoring semantics. See `docs/project-vision.md` for durable handoff context.
+Current milestone results and reproduction commands are recorded in
+`docs/milestones.md`.
 
 ## Goals
 
