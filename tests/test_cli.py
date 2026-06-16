@@ -45,7 +45,10 @@ def test_run_scripted_verbose_output_has_readable_step_blocks(capsys) -> None:  
     assert "Step 01" in output
     assert "Action: MINE_STONE" in output
     assert "Inventory: iron_ore=0 coal=0 stone=1" in output
-    assert "Production: miner_progress=0 furnace_progress=0 target_iron_plates=1" in output
+    assert (
+        "Production: miner_progress=0 furnace_progress=0 target_iron_plates=1 "
+        "burner_mined_iron_ore=0"
+    ) in output
 
 
 def test_run_scripted_supports_target_iron_plates(capsys) -> None:  # type: ignore[no-untyped-def]

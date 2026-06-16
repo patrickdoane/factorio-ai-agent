@@ -35,6 +35,18 @@ def test_scripted_research_benchmark_is_deterministic() -> None:
     assert first.eval_episodes == 4
 
 
+def test_scripted_research_benchmark_solves_burner_chain_task() -> None:
+    summary = run_benchmark(
+        agent_name="scripted",
+        task_names=["burner-first-plate"],
+        eval_episodes=2,
+        seed=42,
+    )
+
+    assert summary.success_rate == 1.0
+    assert summary.invalid_rate == 0.0
+
+
 def test_random_research_benchmark_returns_summary() -> None:
     summary = run_benchmark(
         agent_name="random",

@@ -4,9 +4,19 @@ from factorio_ai_agent.tasks import get_task, resolve_task, task_names
 
 
 def test_task_registry_contains_named_plate_tasks() -> None:
-    assert task_names() == ["first-plate", "three-plates", "ten-plates"]
+    assert task_names() == [
+        "first-plate",
+        "three-plates",
+        "ten-plates",
+        "manual-first-plate",
+        "burner-first-plate",
+        "burner-three-plates",
+        "burner-ten-plates",
+    ]
     assert get_task("first-plate").target_iron_plates == 1
     assert get_task("three-plates").max_steps == 80
+    assert not get_task("manual-first-plate").require_burner_miner_for_success
+    assert get_task("burner-first-plate").require_burner_miner_for_success
 
 
 def test_resolve_task_applies_overrides() -> None:
@@ -15,6 +25,13 @@ def test_resolve_task_applies_overrides() -> None:
     assert task.name == "first-plate"
     assert task.max_steps == 123
     assert task.target_iron_plates == 7
+    assert not task.require_burner_miner_for_success
+
+
+def test_resolve_task_preserves_burner_requirement() -> None:
+    task = resolve_task("burner-first-plate", max_steps=123, target_iron_plates=7)
+
+    assert task.require_burner_miner_for_success
 
 
 def test_get_task_rejects_unknown_name() -> None:

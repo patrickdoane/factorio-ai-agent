@@ -23,9 +23,11 @@ before adding the complexity of a real Factorio process, mod bridge, reset
 harness, and scenario runner.
 
 Current benchmark tasks are small burner-era objectives such as producing one,
-three, or ten iron plates. These are primitive compared with Factorio, but they
-exercise the first important skills: mine, craft, place, fuel, wait for
-production, and complete an objective.
+three, or ten iron plates. Legacy plate tasks preserve earlier simplified
+semantics; explicit burner-chain tasks require burner-miner production before
+success. These are primitive compared with Factorio, but they exercise the first
+important skills: mine, craft, place, fuel, wait for production, and complete an
+objective.
 
 ## Capability Ladder
 

@@ -46,6 +46,10 @@ For saved PPO policy checks:
 factorio-ai research-benchmark --agent ppo --model-path models/ppo-first.zip --tasks first-plate,three-plates --eval-episodes 10 --seed 42 --append-results
 ```
 
+The legacy `first-plate`, `three-plates`, and `ten-plates` tasks preserve earlier
+benchmark semantics. Use `burner-first-plate`, `burner-three-plates`, and
+`burner-ten-plates` when evaluating explicit burner-chain behavior.
+
 The command emits a final machine-readable summary block:
 
 ```text

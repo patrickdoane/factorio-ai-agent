@@ -75,6 +75,7 @@ def _make_training_env(
     env = MockFactorioEnv(
         max_steps=task.max_steps,
         target_iron_plates=task.target_iron_plates,
+        require_burner_miner_for_success=task.require_burner_miner_for_success,
     )
     if reward_shaping == "progress":
         env = ProgressRewardWrapper(env)  # type: ignore[assignment]

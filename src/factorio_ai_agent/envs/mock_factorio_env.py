@@ -51,12 +51,14 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         target_iron_plates: int = 1,
         miner_ticks_per_ore: int = 2,
         furnace_ticks_per_plate: int = 2,
+        require_burner_miner_for_success: bool = False,
     ) -> None:
         super().__init__()
         self.max_steps = max_steps
         self.target_iron_plates = target_iron_plates
         self.miner_ticks_per_ore = miner_ticks_per_ore
         self.furnace_ticks_per_plate = furnace_ticks_per_plate
+        self.require_burner_miner_for_success = require_burner_miner_for_success
         self.action_space = spaces.Discrete(len(Action))
         self.observation_space = spaces.Dict(
             {
@@ -82,6 +84,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
                         "miner_progress": spaces.Discrete(miner_ticks_per_ore + 1),
                         "furnace_progress": spaces.Discrete(furnace_ticks_per_plate + 1),
                         "target_iron_plates": spaces.Discrete(100),
+                        "burner_mined_iron_ore": spaces.Discrete(100),
                     }
                 ),
                 "step_count": spaces.Discrete(max_steps + 1),
@@ -115,6 +118,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             "miner_progress": 0,
             "furnace_progress": 0,
             "target_iron_plates": self.target_iron_plates,
+            "burner_mined_iron_ore": 0,
         }
         self.step_count = 0
         self.current_objective = "Mine resources"
@@ -139,7 +143,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             info["produced_iron_plate"] = True
 
         self.current_objective = self._objective()
-        terminated = self.inventory["iron_plate"] >= self.target_iron_plates
+        terminated = self._is_success()
         truncated = self.step_count >= self.max_steps and not terminated
         return self._get_obs(), reward, terminated, truncated, info
 
@@ -252,6 +256,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             self.production_state["miner_progress"] = 0
             self.placed_entities["coal_fuel_inserted"] -= 1
             self.inventory["iron_ore"] += 1
+            self.production_state["burner_mined_iron_ore"] += 1
 
     def _advance_furnace(self) -> bool:
         if self.inventory["iron_plate"] >= self.target_iron_plates:
@@ -270,7 +275,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         return True
 
     def _objective(self) -> str:
-        if self.inventory["iron_plate"] >= self.target_iron_plates:
+        if self._is_success():
             return "Task complete"
         if self.inventory["stone_furnace"] < 1 and self.placed_entities["stone_furnace"] < 1:
             return "Craft stone furnace"
@@ -282,10 +287,22 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             return "Place burner mining drill"
         if self.placed_entities["coal_fuel_inserted"] < 1:
             return "Fuel burner miner"
+        if (
+            self.require_burner_miner_for_success
+            and self.production_state["burner_mined_iron_ore"] < self.target_iron_plates
+        ):
+            return "Produce ore with burner miner"
         remaining = self.target_iron_plates - self.inventory["iron_plate"]
         if remaining == 1:
             return "Produce 1 more iron plate"
         return f"Produce {remaining} more iron plates"
+
+    def _is_success(self) -> bool:
+        if self.inventory["iron_plate"] < self.target_iron_plates:
+            return False
+        if not self.require_burner_miner_for_success:
+            return True
+        return self.production_state["burner_mined_iron_ore"] >= self.target_iron_plates
 
     def _get_obs(self) -> Observation:
         return {

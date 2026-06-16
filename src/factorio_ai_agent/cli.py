@@ -96,6 +96,7 @@ def run_ppo(
     env = MockFactorioEnv(
         max_steps=task.max_steps,
         target_iron_plates=task.target_iron_plates,
+        require_burner_miner_for_success=task.require_burner_miner_for_success,
     )
     wrapped_env = NumericObservationWrapper(env)
     observation, _ = wrapped_env.reset(seed=seed)
@@ -353,7 +354,10 @@ def main() -> None:
             task = resolve_task(task_name)
             print(
                 f"{task.name}: {task.description} "
-                f"target_iron_plates={task.target_iron_plates} max_steps={task.max_steps}"
+                f"target_iron_plates={task.target_iron_plates} "
+                f"max_steps={task.max_steps} "
+                f"require_burner_miner_for_success="
+                f"{task.require_burner_miner_for_success}"
             )
     else:
         parser.error(f"Unknown command: {args.command}")

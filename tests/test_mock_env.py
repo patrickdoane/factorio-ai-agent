@@ -16,6 +16,7 @@ def test_reset_returns_expected_observation_shape() -> None:
     assert observation["production_state"]["miner_progress"] == 0
     assert observation["production_state"]["furnace_progress"] == 0
     assert observation["production_state"]["target_iron_plates"] == 1
+    assert observation["production_state"]["burner_mined_iron_ore"] == 0
     assert observation["step_count"] == 0
     assert observation["current_objective"] == "Mine resources"
 
@@ -161,6 +162,31 @@ def test_manual_sequence_produces_first_iron_plate() -> None:
     assert not truncated
 
 
+def test_manual_shortcut_does_not_complete_burner_required_task() -> None:
+    env = MockFactorioEnv(max_steps=20, require_burner_miner_for_success=True)
+    observation, _ = env.reset()
+
+    actions = [
+        *[Action.MINE_STONE.value] * 5,
+        Action.CRAFT_STONE_FURNACE.value,
+        Action.PLACE_STONE_FURNACE.value,
+        Action.MINE_IRON_ORE.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]
+
+    terminated = False
+    truncated = False
+    for action in actions:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["iron_plate"] == 1
+    assert observation["production_state"]["burner_mined_iron_ore"] == 0
+    assert not terminated
+    assert not truncated
+    assert observation["current_objective"] == "Craft burner mining drill"
+
+
 def test_wait_advances_miner_and_furnace_production_timing() -> None:
     env = MockFactorioEnv()
     observation, _ = env.reset()
@@ -196,6 +222,7 @@ def test_wait_advances_miner_and_furnace_production_timing() -> None:
 
     assert observation["inventory"]["iron_plate"] == 1
     assert observation["placed_entities"]["coal_fuel_inserted"] == 0
+    assert observation["production_state"]["burner_mined_iron_ore"] == 1
     assert observation["production_state"]["miner_progress"] == 0
     assert observation["production_state"]["furnace_progress"] == 0
     assert reward > 9.0

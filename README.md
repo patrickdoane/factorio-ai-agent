@@ -83,6 +83,9 @@ Run the scripted burner-miner agent:
 factorio-ai run-scripted --task three-plates
 ```
 
+For explicit burner-chain scenarios, use `burner-first-plate`,
+`burner-three-plates`, or `burner-ten-plates`.
+
 Run the PPO training entry point:
 
 ```bash
@@ -160,12 +163,16 @@ The observation is a dictionary containing:
 - `step_count`
 - `current_objective`
 
-`production_state` tracks miner progress, furnace progress, and the target iron
-plate count for the episode. This is still a simplified model: it captures the
-need to wait for production without modeling positions, belts, inserters, or
-furnace fuel separately yet.
+`production_state` tracks miner progress, furnace progress, burner-mined ore,
+and the target iron plate count for the episode. This is still a simplified
+model: it captures the need to wait for production without modeling positions,
+belts, inserters, or furnace fuel separately yet.
 
-Named tasks currently include `first-plate`, `three-plates`, and `ten-plates`.
+Named tasks currently include the legacy simplified tasks `first-plate`,
+`three-plates`, and `ten-plates`, plus explicit `manual-first-plate`,
+`burner-first-plate`, `burner-three-plates`, and `burner-ten-plates` tasks. The
+legacy names are kept to preserve prior benchmark history. Burner-chain tasks
+require enough ore to be produced by the burner miner before success is counted.
 CLI commands accept `--task` and still allow low-level overrides such as
 `--target-iron-plates` and `--max-steps` for quick experiments.
 

@@ -93,6 +93,7 @@ def _make_env(task: TaskDefinition) -> MockFactorioEnv:
     return MockFactorioEnv(
         max_steps=task.max_steps,
         target_iron_plates=task.target_iron_plates,
+        require_burner_miner_for_success=task.require_burner_miner_for_success,
     )
 
 

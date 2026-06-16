@@ -13,6 +13,7 @@ class TaskDefinition:
     description: str
     target_iron_plates: int
     max_steps: int
+    require_burner_miner_for_success: bool = False
 
 
 TASKS: dict[str, TaskDefinition] = {
@@ -33,6 +34,33 @@ TASKS: dict[str, TaskDefinition] = {
         description="Produce ten iron plates as a longer repeated-production task.",
         target_iron_plates=10,
         max_steps=180,
+    ),
+    "manual-first-plate": TaskDefinition(
+        name="manual-first-plate",
+        description="Produce one iron plate with manual ore mining allowed.",
+        target_iron_plates=1,
+        max_steps=50,
+    ),
+    "burner-first-plate": TaskDefinition(
+        name="burner-first-plate",
+        description="Produce one iron plate after building and fueling a burner miner.",
+        target_iron_plates=1,
+        max_steps=50,
+        require_burner_miner_for_success=True,
+    ),
+    "burner-three-plates": TaskDefinition(
+        name="burner-three-plates",
+        description="Produce three iron plates through the burner-miner chain.",
+        target_iron_plates=3,
+        max_steps=80,
+        require_burner_miner_for_success=True,
+    ),
+    "burner-ten-plates": TaskDefinition(
+        name="burner-ten-plates",
+        description="Produce ten iron plates through repeated burner-miner production.",
+        target_iron_plates=10,
+        max_steps=180,
+        require_burner_miner_for_success=True,
     ),
 }
 
@@ -66,4 +94,5 @@ def resolve_task(
         description=task.description,
         target_iron_plates=target_iron_plates or task.target_iron_plates,
         max_steps=max_steps or task.max_steps,
+        require_burner_miner_for_success=task.require_burner_miner_for_success,
     )
