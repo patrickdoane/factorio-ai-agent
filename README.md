@@ -89,6 +89,12 @@ Run the PPO training entry point:
 factorio-ai train-ppo --task first-plate --total-timesteps 256 --n-steps 64 --batch-size 32 --eval-episodes 3
 ```
 
+Inspect a saved PPO policy with legible step-by-step output:
+
+```bash
+factorio-ai run-ppo --model-path models/ppo-first.zip --task first-plate --seed 42
+```
+
 PPO requires the optional `rl` dependency extra. Install it with `uv sync
 --all-extras` or `make setup-rl`. PPO defaults to `--device cpu` because this
 prototype uses a small MLP policy; that avoids poor GPU utilization warnings,

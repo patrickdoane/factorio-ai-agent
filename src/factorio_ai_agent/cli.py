@@ -6,8 +6,20 @@ import argparse
 
 from factorio_ai_agent.agents.random_agent import RandomAgent
 from factorio_ai_agent.agents.scripted_burner_agent import ScriptedBurnerAgent
-from factorio_ai_agent.evaluation import format_summary, run_episode, summarize_results
+from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv
+from factorio_ai_agent.envs.numeric_observation_wrapper import NumericObservationWrapper
+from factorio_ai_agent.evaluation import (
+    EpisodeResult,
+    format_episode_header,
+    format_goal,
+    format_result,
+    format_summary,
+    format_step,
+    run_episode,
+    summarize_results,
+)
 from factorio_ai_agent.research.benchmark import (
+    _load_ppo_model,
     append_results_tsv,
     format_benchmark_summary,
     parse_task_names,
@@ -64,6 +76,54 @@ def run_scripted(
         target_iron_plates=target_iron_plates,
         task_name=task_name,
     )
+
+
+def run_ppo(
+    model_path: str,
+    max_steps: int | None = None,
+    quiet: bool = False,
+    seed: int | None = None,
+    target_iron_plates: int | None = None,
+    task_name: str = "first-plate",
+) -> EpisodeResult:
+    """Run a saved PPO policy with readable per-step output."""
+    model = _load_ppo_model(model_path)
+    task = resolve_task(
+        task_name,
+        max_steps=max_steps,
+        target_iron_plates=target_iron_plates,
+    )
+    env = MockFactorioEnv(
+        max_steps=task.max_steps,
+        target_iron_plates=task.target_iron_plates,
+    )
+    wrapped_env = NumericObservationWrapper(env)
+    observation, _ = wrapped_env.reset(seed=seed)
+    terminated = False
+    truncated = False
+    total_reward = 0.0
+
+    if not quiet:
+        print(format_episode_header("ppo", 1))
+
+    while not terminated and not truncated:
+        action, _ = model.predict(observation, deterministic=True)  # type: ignore[attr-defined]
+        observation, reward, terminated, truncated, info = wrapped_env.step(int(action))
+        total_reward += reward
+        if not quiet:
+            print(format_step(env, reward, info))
+
+    result = EpisodeResult(
+        success=terminated,
+        steps=env.step_count,
+        total_reward=total_reward,
+        terminated=terminated,
+        truncated=truncated,
+        goal=format_goal(task.target_iron_plates),
+        status=env.current_objective,
+    )
+    print(format_result(result, 1))
+    return result
 
 
 def run_evaluate(
@@ -154,6 +214,16 @@ def build_parser() -> argparse.ArgumentParser:
     scripted_parser.add_argument("--target-iron-plates", type=int, default=None)
     scripted_parser.add_argument("--quiet", action="store_true")
 
+    ppo_parser = subparsers.add_parser(
+        "run-ppo", help="Run a saved PPO policy with readable step output."
+    )
+    ppo_parser.add_argument("--model-path", required=True)
+    ppo_parser.add_argument("--task", choices=task_names(), default="first-plate")
+    ppo_parser.add_argument("--max-steps", type=int, default=None)
+    ppo_parser.add_argument("--seed", type=int, default=None)
+    ppo_parser.add_argument("--target-iron-plates", type=int, default=None)
+    ppo_parser.add_argument("--quiet", action="store_true")
+
     evaluate_parser = subparsers.add_parser(
         "evaluate", help="Compare baseline agents over multiple episodes."
     )
@@ -226,6 +296,15 @@ def main() -> None:
         run_scripted(
             max_steps=args.max_steps,
             quiet=args.quiet,
+            target_iron_plates=args.target_iron_plates,
+            task_name=args.task,
+        )
+    elif args.command == "run-ppo":
+        run_ppo(
+            model_path=args.model_path,
+            max_steps=args.max_steps,
+            quiet=args.quiet,
+            seed=args.seed,
             target_iron_plates=args.target_iron_plates,
             task_name=args.task,
         )

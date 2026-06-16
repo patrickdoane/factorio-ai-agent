@@ -54,14 +54,14 @@ def run_episode(
     total_reward = 0.0
 
     if not quiet:
-        print(_format_episode_header(agent_name, episode_number))
+        print(format_episode_header(agent_name, episode_number))
 
     while not terminated and not truncated:
         action = select_action(env, observation)
         observation, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
         if not quiet:
-            print(_format_step(env, reward, info))
+            print(format_step(env, reward, info))
 
     result = EpisodeResult(
         success=terminated,
@@ -69,10 +69,10 @@ def run_episode(
         total_reward=total_reward,
         terminated=terminated,
         truncated=truncated,
-        goal=_format_goal(task.target_iron_plates),
+        goal=format_goal(task.target_iron_plates),
         status=observation["current_objective"],
     )
-    print(_format_result(result, episode_number))
+    print(format_result(result, episode_number))
     return result
 
 
@@ -107,11 +107,11 @@ def format_summary(label: str, summary: dict[str, float]) -> str:
     )
 
 
-def _format_episode_header(agent_name: str, episode_number: int) -> str:
+def format_episode_header(agent_name: str, episode_number: int) -> str:
     return f"\n=== Episode {episode_number}: {agent_name} ==="
 
 
-def _format_step(env: MockFactorioEnv, reward: float, info: dict[str, object]) -> str:
+def format_step(env: MockFactorioEnv, reward: float, info: dict[str, object]) -> str:
     inventory = _format_counts(env.inventory)
     placed = _format_counts(env.placed_entities)
     production = _format_counts(env.production_state)
@@ -127,7 +127,7 @@ def _format_step(env: MockFactorioEnv, reward: float, info: dict[str, object]) -
     )
 
 
-def _format_result(result: EpisodeResult, episode_number: int) -> str:
+def format_result(result: EpisodeResult, episode_number: int) -> str:
     return (
         f"\n=== Episode {episode_number} Result ===\n"
         f"Success: {result.success}\n"
@@ -144,7 +144,7 @@ def _format_counts(values: dict[str, int]) -> str:
     return " ".join(f"{key}={value}" for key, value in values.items())
 
 
-def _format_goal(target_iron_plates: int) -> str:
+def format_goal(target_iron_plates: int) -> str:
     if target_iron_plates == 1:
         return "Produce 1 iron plate"
     return f"Produce {target_iron_plates} iron plates"

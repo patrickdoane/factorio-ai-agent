@@ -1,12 +1,20 @@
 import pytest
 
+import factorio_ai_agent.cli as cli_module
+from factorio_ai_agent.envs.mock_factorio_env import Action
 from factorio_ai_agent.cli import (
     build_parser,
     run_evaluate,
+    run_ppo,
     run_random,
     run_research_benchmark,
     run_scripted,
 )
+
+
+class FakePPOModel:
+    def predict(self, observation, deterministic: bool = True):  # type: ignore[no-untyped-def]
+        return int(Action.WAIT), None
 
 
 def test_run_scripted_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -99,6 +107,46 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
     assert args.seed == 42
     assert args.save_path == "models/test.zip"
     assert args.eval_episodes == 2
+
+
+def test_run_ppo_parser_accepts_rollout_options() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "run-ppo",
+            "--model-path",
+            "models/test.zip",
+            "--task",
+            "first-plate",
+            "--seed",
+            "42",
+            "--max-steps",
+            "3",
+        ]
+    )
+
+    assert args.command == "run-ppo"
+    assert args.model_path == "models/test.zip"
+    assert args.task == "first-plate"
+    assert args.seed == 42
+    assert args.max_steps == 3
+
+
+def test_run_ppo_prints_readable_rollout(capsys, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(cli_module, "_load_ppo_model", lambda _path: FakePPOModel())
+
+    run_ppo(model_path="models/test.zip", max_steps=2, seed=42)
+
+    output = capsys.readouterr().out
+
+    assert "=== Episode 1: ppo ===" in output
+    assert "Step 01" in output
+    assert "Action: WAIT" in output
+    assert "Inventory: iron_ore=0 coal=0 stone=0" in output
+    assert "=== Episode 1 Result ===" in output
+    assert "Success: False" in output
+    assert "Truncated: True" in output
 
 
 def test_research_benchmark_cli_smoke(capsys) -> None:  # type: ignore[no-untyped-def]
