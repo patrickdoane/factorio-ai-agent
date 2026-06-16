@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
-from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv
+import gymnasium as gym
+
+from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv, Observation
 from factorio_ai_agent.envs.numeric_observation_wrapper import NumericObservationWrapper
-from factorio_ai_agent.tasks import resolve_task
+from factorio_ai_agent.tasks import TaskDefinition, resolve_task
 from factorio_ai_agent.training.reward_wrappers import (
     BurnerProgressRewardWrapper,
     ProgressRewardWrapper,
@@ -26,6 +30,7 @@ def train_ppo(
     eval_episodes: int = 0,
     reward_shaping: str = "none",
     algo: str = "ppo",
+    task_names: str | None = None,
 ) -> None:
     """Train PPO on the mock environment when optional RL dependencies exist."""
     _validate_ppo_config(
@@ -35,6 +40,7 @@ def train_ppo(
         reward_shaping=reward_shaping,
         algo=algo,
     )
+    training_task_names = _parse_training_task_names(task_name, task_names)
 
     if not _runtime_supports_torch():
         print(_runtime_error_message())
@@ -46,7 +52,7 @@ def train_ppo(
         print(f"{error} Install with: pip install -e '.[rl]'")
         return
 
-    env = _make_training_env(task_name, reward_shaping=reward_shaping)
+    env = _make_training_envs(training_task_names, reward_shaping=reward_shaping)
     model = model_class(
         "MlpPolicy",
         env,
@@ -68,13 +74,58 @@ def train_ppo(
     if eval_episodes > 0:
         _evaluate_model(
             model,
-            task_name=task_name,
+            task_names=training_task_names,
             episodes=eval_episodes,
             seed=seed,
             label=algo,
         )
 
     print(f"Finished {algo} training demo.")
+
+
+class MultiTaskTrainingEnv(gym.Env[Observation, int]):
+    """Sample one configured mock task on each reset for PPO training."""
+
+    def __init__(
+        self,
+        task_names: Sequence[str],
+        *,
+        reward_shaping: str = "none",
+    ) -> None:
+        super().__init__()
+        self.tasks = [resolve_task(task_name) for task_name in task_names]
+        self.reward_shaping = reward_shaping
+        prototype = _make_mock_env(self.tasks[0], reward_shaping=reward_shaping)
+        self.action_space = prototype.action_space
+        self.observation_space = prototype.observation_space
+        self.current_task_name = self.tasks[0].name
+        self._current_env = prototype
+
+    @property
+    def step_count(self) -> int:
+        return self._current_env.unwrapped.step_count  # type: ignore[attr-defined]
+
+    def action_masks(self):  # type: ignore[no-untyped-def]
+        return self._current_env.action_masks()  # type: ignore[attr-defined]
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[Observation, dict[str, Any]]:
+        super().reset(seed=seed)
+        task = self.tasks[int(self.np_random.integers(len(self.tasks)))]
+        self.current_task_name = task.name
+        self._current_env = _make_mock_env(task, reward_shaping=self.reward_shaping)
+        observation, info = self._current_env.reset(seed=seed, options=options)
+        info["task_name"] = task.name
+        return observation, info
+
+    def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
+        observation, reward, terminated, truncated, info = self._current_env.step(action)
+        info["task_name"] = self.current_task_name
+        return observation, reward, terminated, truncated, info
 
 
 def _import_model_class(algo: str) -> type:
@@ -99,6 +150,26 @@ def _make_training_env(
     reward_shaping: str = "none",
 ) -> NumericObservationWrapper:
     task = resolve_task(task_name)
+    return NumericObservationWrapper(_make_mock_env(task, reward_shaping=reward_shaping))
+
+
+def _make_training_envs(
+    task_names: Sequence[str],
+    *,
+    reward_shaping: str = "none",
+) -> NumericObservationWrapper:
+    if len(task_names) == 1:
+        return _make_training_env(task_names[0], reward_shaping=reward_shaping)
+    return NumericObservationWrapper(
+        MultiTaskTrainingEnv(task_names, reward_shaping=reward_shaping)
+    )
+
+
+def _make_mock_env(
+    task: TaskDefinition,
+    *,
+    reward_shaping: str = "none",
+) -> gym.Env[Observation, int]:
     env = MockFactorioEnv(
         max_steps=task.max_steps,
         target_iron_plates=task.target_iron_plates,
@@ -110,40 +181,56 @@ def _make_training_env(
         env = ProgressRewardWrapper(env)  # type: ignore[assignment]
     if reward_shaping == "burner-progress":
         env = BurnerProgressRewardWrapper(env)  # type: ignore[assignment]
-    return NumericObservationWrapper(
-        env
-    )
+    return env
+
+
+def _parse_training_task_names(task_name: str, task_names: str | None) -> list[str]:
+    if task_names is None:
+        resolve_task(task_name)
+        return [task_name]
+    names = [name.strip() for name in task_names.split(",") if name.strip()]
+    if not names:
+        raise ValueError("task_names must include at least one task.")
+    for name in names:
+        resolve_task(name)
+    return names
 
 
 def _evaluate_model(
     model: object,
     *,
-    task_name: str,
+    task_names: Sequence[str],
     episodes: int,
     seed: int | None,
     label: str = "ppo",
 ) -> None:
     successes = 0
     total_steps = 0
+    total_episodes = episodes * len(task_names)
 
-    for episode in range(episodes):
-        env = _make_training_env(task_name)
-        observation, _ = env.reset(seed=None if seed is None else seed + episode)
-        terminated = False
-        truncated = False
+    for task_index, task_name in enumerate(task_names):
+        for episode in range(episodes):
+            env = _make_training_env(task_name)
+            episode_seed = None
+            if seed is not None:
+                episode_seed = seed + task_index * episodes + episode
+            observation, _ = env.reset(seed=episode_seed)
+            terminated = False
+            truncated = False
 
-        while not terminated and not truncated:
-            action, _ = _predict_action(model, observation, env, deterministic=True)
-            observation, _, terminated, truncated, _ = env.step(int(action))
+            while not terminated and not truncated:
+                action, _ = _predict_action(model, observation, env, deterministic=True)
+                observation, _, terminated, truncated, _ = env.step(int(action))
 
-        successes += int(terminated)
-        total_steps += env.unwrapped.step_count
+            successes += int(terminated)
+            total_steps += env.unwrapped.step_count
 
-    success_rate = successes / episodes
-    avg_steps = total_steps / episodes
+    success_rate = successes / total_episodes
+    avg_steps = total_steps / total_episodes
     print(
         f"{label} eval: "
-        f"episodes={episodes} success_rate={success_rate * 100:.1f}% "
+        f"tasks={','.join(task_names)} episodes={total_episodes} "
+        f"success_rate={success_rate * 100:.1f}% "
         f"avg_steps={avg_steps:.1f}"
     )
 

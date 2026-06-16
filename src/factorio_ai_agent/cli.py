@@ -296,6 +296,11 @@ def build_parser() -> argparse.ArgumentParser:
         "train-ppo", help="Run the optional PPO training entry point."
     )
     train_parser.add_argument("--task", choices=task_names(), default="first-plate")
+    train_parser.add_argument(
+        "--tasks",
+        default=None,
+        help="Comma-separated task names to sample during training. Overrides --task.",
+    )
     train_parser.add_argument("--total-timesteps", type=int, default=1_000)
     train_parser.add_argument("--device", default="cpu")
     train_parser.add_argument("--n-steps", type=int, default=256)
@@ -388,6 +393,7 @@ def main() -> None:
             eval_episodes=args.eval_episodes,
             reward_shaping=args.reward_shaping,
             algo=args.algo,
+            task_names=args.tasks,
         )
     elif args.command == "list-tasks":
         for task_name in task_names():

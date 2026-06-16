@@ -85,6 +85,8 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
             "train-ppo",
             "--task",
             "first-plate",
+            "--tasks",
+            "freeplay-burner-first-plate,freeplay-burner-three-plates",
             "--total-timesteps",
             "64",
             "--n-steps",
@@ -107,6 +109,7 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
     )
 
     assert args.command == "train-ppo"
+    assert args.tasks == "freeplay-burner-first-plate,freeplay-burner-three-plates"
     assert args.total_timesteps == 64
     assert args.n_steps == 64
     assert args.batch_size == 32

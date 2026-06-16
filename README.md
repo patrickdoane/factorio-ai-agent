@@ -104,6 +104,12 @@ Train with mask-aware PPO when valid-action masking matters:
 factorio-ai train-ppo --algo maskable-ppo --task freeplay-burner-first-plate --total-timesteps 50000 --reward-shaping burner-progress --save-path /tmp/opencode/maskable-freeplay-first.zip
 ```
 
+Train one policy across multiple tasks by passing a comma-separated task list:
+
+```bash
+factorio-ai train-ppo --algo maskable-ppo --tasks freeplay-burner-first-plate,freeplay-burner-three-plates,freeplay-burner-ten-plates --total-timesteps 50000 --reward-shaping burner-progress --save-path /tmp/opencode/maskable-freeplay-multitask.zip
+```
+
 Use training-only progress reward shaping for denser PPO feedback while keeping
 benchmark rewards unchanged:
 

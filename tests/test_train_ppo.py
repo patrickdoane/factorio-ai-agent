@@ -72,6 +72,44 @@ def test_train_ppo_rejects_unknown_algo() -> None:
         train_ppo_module.train_ppo(algo="unknown")
 
 
+def test_parse_training_task_names_uses_single_task_by_default() -> None:
+    names = train_ppo_module._parse_training_task_names(  # type: ignore[attr-defined]
+        "first-plate",
+        None,
+    )
+
+    assert names == ["first-plate"]
+
+
+def test_parse_training_task_names_accepts_comma_separated_tasks() -> None:
+    names = train_ppo_module._parse_training_task_names(  # type: ignore[attr-defined]
+        "first-plate",
+        "freeplay-burner-first-plate, freeplay-burner-three-plates",
+    )
+
+    assert names == ["freeplay-burner-first-plate", "freeplay-burner-three-plates"]
+
+
+def test_parse_training_task_names_rejects_empty_list() -> None:
+    with pytest.raises(ValueError, match="task_names"):
+        train_ppo_module._parse_training_task_names("first-plate", ",")  # type: ignore[attr-defined]
+
+
+def test_make_training_envs_samples_named_tasks() -> None:
+    env = train_ppo_module._make_training_envs(  # type: ignore[attr-defined]
+        ["freeplay-burner-first-plate", "freeplay-burner-three-plates"],
+        reward_shaping="burner-progress",
+    )
+
+    _, info = env.reset(seed=1)
+
+    assert info["task_name"] in {
+        "freeplay-burner-first-plate",
+        "freeplay-burner-three-plates",
+    }
+    assert env.action_masks().shape == (10,)
+
+
 def test_make_training_env_applies_progress_reward_shaping() -> None:
     env = train_ppo_module._make_training_env(  # type: ignore[attr-defined]
         "first-plate",
