@@ -4,6 +4,101 @@ This file records durable project milestones and the commands needed to reproduc
 them. Saved models under `/tmp/opencode` are local experiment artifacts; retrain
 them with the listed commands when a clean machine needs the same policy.
 
+## 2026-06-16: Furnace Input Buffer Policies
+
+The furnace buffer generation now includes explicit furnace input as well as
+output. The `buffered-insert-*` tasks require the policy to mine ore, insert it
+with `INSERT_IRON_ORE_INTO_FURNACE`, wait for smelting, and optionally collect
+the result with `TAKE_FURNACE_OUTPUT`. Older buffer tasks keep their automatic
+inventory-to-furnace input behavior.
+
+Current best input-buffer specialists:
+
+```text
+buffered-insert-smelt-plate:          model=/tmp/opencode/maskable-ppo-buffered-insert-smelt-plate-10k.zip          success_rate=1.000000 avg_steps=5.000000  invalid_rate=0.000000
+buffered-insert-collect-plate:        model=/tmp/opencode/maskable-ppo-buffered-insert-collect-plate-10k.zip        success_rate=1.000000 avg_steps=6.000000  invalid_rate=0.000000
+buffered-insert-collect-three-plates: model=/tmp/opencode/maskable-ppo-buffered-insert-collect-three-mask-50k.zip   success_rate=1.000000 avg_steps=16.000000 invalid_rate=0.000000
+```
+
+Specialist benchmark results:
+
+```text
+buffered-insert-smelt-plate:
+score:              0.999500
+success_rate:       1.000000
+avg_steps:          5.000000
+avg_reward:         9.950000
+invalid_rate:       0.000000
+eval_episodes:      20
+
+buffered-insert-collect-plate:
+score:              0.999400
+success_rate:       1.000000
+avg_steps:          6.000000
+avg_reward:         19.940000
+invalid_rate:       0.000000
+eval_episodes:      20
+
+buffered-insert-collect-three-plates:
+score:              0.998400
+success_rate:       1.000000
+avg_steps:          16.000000
+avg_reward:         39.840000
+invalid_rate:       0.000000
+eval_episodes:      20
+```
+
+Training commands:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-insert-smelt-plate \
+  --total-timesteps 10000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-insert-smelt-plate-10k.zip
+
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-insert-collect-plate \
+  --total-timesteps 10000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-insert-collect-plate-10k.zip
+
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-insert-collect-three-plates \
+  --total-timesteps 50000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-insert-collect-three-mask-50k.zip
+```
+
+Benchmark command examples:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-insert-collect-three-mask-50k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-insert-collect-three-plates \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The learned single-plate collection policy follows the 6-step sequence: place
+  furnace, mine ore, insert ore, wait, wait, take furnace output.
+- The learned repeated collection policy follows the 16-step repeated loop with
+  three mine/insert/wait/wait/take cycles after furnace placement.
+- The collection action mask now forces `TAKE_FURNACE_OUTPUT` while collection is
+  the active success condition and furnace output is pending. This prevents
+  policies from postponing collection by continuing to mine or insert ore.
+- A 50k three-task input-buffer policy at
+  `/tmp/opencode/maskable-ppo-buffered-insert-multitask-50k.zip` did not solve
+  the aggregate curriculum (`success_rate=0.000000`, `invalid_rate=0.000000`),
+  so multi-task input-buffer retention remains the next training problem.
+
 ## 2026-06-16: Furnace Output Buffer Policies
 
 The next training generation starts with explicit furnace output buffer state and

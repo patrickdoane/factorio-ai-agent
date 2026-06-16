@@ -98,6 +98,10 @@ For machine-buffer scenarios, use `buffered-smelt-plate`,
 `buffered-collect-plate`, or `buffered-collect-three-plates`. These tasks keep
 smelted plates in the furnace output buffer instead of moving them directly into
 inventory; the collection variants require explicitly taking the furnace output.
+For stricter furnace I/O scenarios, use `buffered-insert-smelt-plate`,
+`buffered-insert-collect-plate`, or `buffered-insert-collect-three-plates`.
+These require explicitly inserting ore into the furnace input buffer before
+smelting can advance.
 
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
@@ -203,6 +207,7 @@ factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates
 - Craft a burner mining drill.
 - Place the furnace and burner miner.
 - Insert coal fuel.
+- Insert iron ore into a furnace input buffer.
 - Take furnace output.
 - Wait for the miner and furnace production timers to produce iron plates.
 
@@ -222,10 +227,10 @@ The observation is a dictionary containing:
 - `current_objective`
 
 `production_state` tracks miner progress, furnace progress, burner-mined ore,
-furnace output buffers, and the target iron plate count for the episode. This is
-still a simplified model: it captures the need to wait for production and collect
-machine output without modeling positions, belts, inserters, or furnace fuel
-separately yet.
+furnace input/output buffers, and the target iron plate count for the episode.
+This is still a simplified model: it captures the need to wait for production,
+feed furnace input, and collect machine output without modeling positions, belts,
+inserters, or furnace fuel separately yet.
 
 Named tasks currently include the legacy simplified tasks `first-plate`,
 `three-plates`, and `ten-plates`, plus explicit `manual-first-plate`,
@@ -243,10 +248,10 @@ mock dictionary observation into a fixed numeric vector and drops the string
 objective. This keeps the default environment readable while giving PPO a simple
 `Box` observation space.
 
-Recipe-realism changes add `iron_gear_wheel` and burner-chain production fields
-to numeric observations and add a new discrete action. PPO models trained before
-these changes should be treated as historical artifacts rather than compatible
-policies for current tasks.
+Recipe-realism and buffer changes add `iron_gear_wheel`, burner-chain production
+fields, furnace buffers, and new discrete actions to numeric observations. PPO
+models trained before these changes should be treated as historical artifacts
+rather than compatible policies for current tasks.
 
 The mock environment and numeric wrapper also expose `action_masks()`, returning
 a NumPy boolean mask of valid discrete actions. Standard Stable-Baselines3 PPO
