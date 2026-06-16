@@ -21,6 +21,28 @@ def test_reset_returns_expected_observation_shape() -> None:
     assert observation["current_objective"] == "Mine resources"
 
 
+def test_reset_applies_configured_starting_inventory() -> None:
+    env = MockFactorioEnv(
+        starting_inventory={
+            "burner_mining_drill": 1,
+            "stone_furnace": 1,
+            "iron_plate": 8,
+        }
+    )
+
+    observation, _ = env.reset()
+
+    assert observation["inventory"]["burner_mining_drill"] == 1
+    assert observation["inventory"]["stone_furnace"] == 1
+    assert observation["inventory"]["iron_plate"] == 8
+    assert observation["placed_entities"]["burner_mining_drill"] == 0
+
+
+def test_reset_rejects_unknown_starting_inventory_item() -> None:
+    with pytest.raises(ValueError, match="Unknown starting inventory item"):
+        MockFactorioEnv(starting_inventory={"copper_plate": 1})
+
+
 def test_mining_and_invalid_craft_updates_state_and_reward() -> None:
     env = MockFactorioEnv()
     env.reset()
@@ -185,6 +207,41 @@ def test_manual_shortcut_does_not_complete_burner_required_task() -> None:
     assert not terminated
     assert not truncated
     assert observation["current_objective"] == "Craft burner mining drill"
+
+
+def test_burner_required_success_can_use_explicit_burner_ore_goal() -> None:
+    env = MockFactorioEnv(
+        max_steps=20,
+        target_iron_plates=9,
+        require_burner_miner_for_success=True,
+        required_burner_mined_iron_ore=1,
+        starting_inventory={
+            "burner_mining_drill": 1,
+            "stone_furnace": 1,
+            "iron_plate": 8,
+        },
+    )
+    observation, _ = env.reset()
+
+    actions = [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]
+
+    terminated = False
+    truncated = False
+    for action in actions:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["iron_plate"] == 9
+    assert observation["production_state"]["burner_mined_iron_ore"] == 1
+    assert terminated
+    assert not truncated
 
 
 def test_wait_advances_miner_and_furnace_production_timing() -> None:

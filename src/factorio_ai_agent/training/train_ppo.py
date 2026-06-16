@@ -79,6 +79,8 @@ def _make_training_env(
         max_steps=task.max_steps,
         target_iron_plates=task.target_iron_plates,
         require_burner_miner_for_success=task.require_burner_miner_for_success,
+        starting_inventory=dict(task.starting_inventory),
+        required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
     )
     if reward_shaping == "progress":
         env = ProgressRewardWrapper(env)  # type: ignore[assignment]

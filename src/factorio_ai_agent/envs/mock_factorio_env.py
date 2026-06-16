@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import IntEnum
-from typing import Any
+from typing import Any, Mapping
 
 import gymnasium as gym
 import numpy as np
@@ -52,6 +52,8 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         miner_ticks_per_ore: int = 2,
         furnace_ticks_per_plate: int = 2,
         require_burner_miner_for_success: bool = False,
+        starting_inventory: Mapping[str, int] | None = None,
+        required_burner_mined_iron_ore: int | None = None,
     ) -> None:
         super().__init__()
         self.max_steps = max_steps
@@ -59,6 +61,12 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         self.miner_ticks_per_ore = miner_ticks_per_ore
         self.furnace_ticks_per_plate = furnace_ticks_per_plate
         self.require_burner_miner_for_success = require_burner_miner_for_success
+        self.starting_inventory = dict(starting_inventory or {})
+        self.required_burner_mined_iron_ore = (
+            required_burner_mined_iron_ore
+            if required_burner_mined_iron_ore is not None
+            else target_iron_plates
+        )
         self.action_space = spaces.Discrete(len(Action))
         self.observation_space = spaces.Dict(
             {
@@ -99,7 +107,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         seed: int | None = None,
         options: dict[str, Any] | None = None,
     ) -> tuple[Observation, dict[str, Any]]:
-        """Reset the task to an empty inventory and no placed entities."""
+        """Reset the task to its configured starting inventory."""
         super().reset(seed=seed)
         self.inventory = {
             "iron_ore": 0,
@@ -109,6 +117,10 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             "burner_mining_drill": 0,
             "iron_plate": 0,
         }
+        for item, amount in self.starting_inventory.items():
+            if item not in self.inventory:
+                raise ValueError(f"Unknown starting inventory item: {item}")
+            self.inventory[item] = amount
         self.placed_entities = {
             "stone_furnace": 0,
             "burner_mining_drill": 0,
@@ -289,7 +301,8 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             return "Fuel burner miner"
         if (
             self.require_burner_miner_for_success
-            and self.production_state["burner_mined_iron_ore"] < self.target_iron_plates
+            and self.production_state["burner_mined_iron_ore"]
+            < self.required_burner_mined_iron_ore
         ):
             return "Produce ore with burner miner"
         remaining = self.target_iron_plates - self.inventory["iron_plate"]
@@ -302,7 +315,10 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             return False
         if not self.require_burner_miner_for_success:
             return True
-        return self.production_state["burner_mined_iron_ore"] >= self.target_iron_plates
+        return (
+            self.production_state["burner_mined_iron_ore"]
+            >= self.required_burner_mined_iron_ore
+        )
 
     def _get_obs(self) -> Observation:
         return {

@@ -5,6 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+FREEPLAY_STARTING_INVENTORY: tuple[tuple[str, int], ...] = (
+    ("burner_mining_drill", 1),
+    ("stone_furnace", 1),
+    ("iron_plate", 8),
+)
+
+
 @dataclass(frozen=True)
 class TaskDefinition:
     """Static configuration for a mock Factorio task."""
@@ -14,6 +21,8 @@ class TaskDefinition:
     target_iron_plates: int
     max_steps: int
     require_burner_miner_for_success: bool = False
+    starting_inventory: tuple[tuple[str, int], ...] = ()
+    required_burner_mined_iron_ore: int | None = None
 
 
 TASKS: dict[str, TaskDefinition] = {
@@ -62,6 +71,33 @@ TASKS: dict[str, TaskDefinition] = {
         max_steps=180,
         require_burner_miner_for_success=True,
     ),
+    "freeplay-burner-first-plate": TaskDefinition(
+        name="freeplay-burner-first-plate",
+        description="Produce one additional iron plate from the Freeplay crashland inventory.",
+        target_iron_plates=9,
+        max_steps=50,
+        require_burner_miner_for_success=True,
+        starting_inventory=FREEPLAY_STARTING_INVENTORY,
+        required_burner_mined_iron_ore=1,
+    ),
+    "freeplay-burner-three-plates": TaskDefinition(
+        name="freeplay-burner-three-plates",
+        description="Produce three additional iron plates from the Freeplay crashland inventory.",
+        target_iron_plates=11,
+        max_steps=80,
+        require_burner_miner_for_success=True,
+        starting_inventory=FREEPLAY_STARTING_INVENTORY,
+        required_burner_mined_iron_ore=3,
+    ),
+    "freeplay-burner-ten-plates": TaskDefinition(
+        name="freeplay-burner-ten-plates",
+        description="Produce ten additional iron plates from the Freeplay crashland inventory.",
+        target_iron_plates=18,
+        max_steps=180,
+        require_burner_miner_for_success=True,
+        starting_inventory=FREEPLAY_STARTING_INVENTORY,
+        required_burner_mined_iron_ore=10,
+    ),
 }
 
 
@@ -95,4 +131,6 @@ def resolve_task(
         target_iron_plates=target_iron_plates or task.target_iron_plates,
         max_steps=max_steps or task.max_steps,
         require_burner_miner_for_success=task.require_burner_miner_for_success,
+        starting_inventory=task.starting_inventory,
+        required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
     )
