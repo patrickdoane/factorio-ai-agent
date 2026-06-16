@@ -187,8 +187,9 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         valid = [
             Action.MINE_IRON_ORE,
             Action.MINE_COAL,
-            Action.WAIT,
         ]
+        if self._can_wait():
+            valid.append(Action.WAIT)
         if self._can_mine_stone():
             valid.append(Action.MINE_STONE)
         if self.inventory["stone"] >= 5 and self._can_craft_stone_furnace():
@@ -235,6 +236,22 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             self.inventory["stone_furnace"] + self.placed_entities["stone_furnace"]
         )
         return available_furnaces < 2
+
+    def _can_wait(self) -> bool:
+        if not (
+            self.success_condition == "iron_plates"
+            and self.require_burner_miner_for_success
+        ):
+            return True
+        furnace_can_advance = (
+            self.placed_entities["stone_furnace"] > 0
+            and self.inventory["iron_ore"] > 0
+        )
+        miner_can_advance = (
+            self.placed_entities["burner_mining_drill"] > 0
+            and self.placed_entities["coal_fuel_inserted"] > 0
+        )
+        return furnace_can_advance or miner_can_advance
 
     def valid_action_mask(self) -> list[bool]:
         """Return a boolean mask of actions that are currently valid."""
