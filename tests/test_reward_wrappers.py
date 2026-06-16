@@ -189,6 +189,113 @@ def test_burner_progress_penalizes_extra_bootstrap_gears() -> None:
     assert info["progress_reward"] == -5.0
 
 
+def test_burner_progress_penalizes_placing_recipe_furnace_before_drill() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            starting_inventory={"stone_furnace": 1, "iron_plate": 9},
+            success_condition="burner_mining_drill_crafted",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.PLACE_STONE_FURNACE))
+
+    assert reward == pytest.approx(-10.01)
+    assert info["progress_reward"] == -10.0
+
+
+def test_burner_progress_rewards_coal_for_fuel_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+            success_condition="burner_mining_drill_fueled",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.MINE_COAL))
+
+    assert reward == pytest.approx(6.04)
+    assert info["progress_reward"] == 6.05
+
+
+def test_burner_progress_does_not_repeatedly_reward_coal_for_fuel_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+            success_condition="burner_mining_drill_fueled",
+        )
+    )
+    env.reset(seed=1)
+    env.step(int(Action.MINE_COAL))
+
+    _, reward, _, _, info = env.step(int(Action.MINE_COAL))
+
+    assert reward == pytest.approx(-0.01)
+    assert "progress_reward" not in info
+
+
+def test_burner_progress_penalizes_furnace_placement_for_fuel_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+            success_condition="burner_mining_drill_fueled",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.PLACE_STONE_FURNACE))
+
+    assert reward == pytest.approx(-8.01)
+    assert info["progress_reward"] == -8.0
+
+
+def test_burner_progress_penalizes_iron_for_fuel_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+            success_condition="burner_mining_drill_fueled",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.MINE_IRON_ORE))
+
+    assert reward == pytest.approx(-3.96)
+    assert info["progress_reward"] == pytest.approx(-3.95)
+
+
+def test_burner_progress_penalizes_plate_for_fuel_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+            success_condition="burner_mining_drill_fueled",
+        )
+    )
+    env.reset(seed=1)
+    env.env.placed_entities["stone_furnace"] = 1
+    env.env.inventory["iron_ore"] = 1
+    env._achieved_milestones.add("placed_stone_furnace")
+    env.step(int(Action.WAIT))
+
+    _, reward, _, _, info = env.step(int(Action.WAIT))
+
+    assert reward == pytest.approx(-6.01)
+    assert info["progress_reward"] == -6.0
+
+
 def test_burner_progress_penalizes_manual_plate_after_spending_starting_plates() -> None:
     env = BurnerProgressRewardWrapper(
         MockFactorioEnv(

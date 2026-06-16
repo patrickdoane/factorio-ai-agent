@@ -139,13 +139,19 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
     BOOTSTRAP_GEAR_BONUS = 3.00
     BOOTSTRAP_SECOND_FURNACE_BONUS = 4.00
     BOOTSTRAP_EXTRA_FURNACE_PENALTY = 5.00
+    BOOTSTRAP_RECIPE_FURNACE_PLACEMENT_PENALTY = 10.00
     BOOTSTRAP_REQUIRED_PLATE_EQUIVALENT = 9
     BOOTSTRAP_EXTRA_GEAR_PENALTY = 5.00
+    FUEL_TASK_COAL_BONUS = 6.00
+    FUEL_TASK_IRON_DISTRACTION_PENALTY = 4.00
+    FUEL_TASK_PLATE_DISTRACTION_PENALTY = 6.00
+    FUEL_TASK_STONE_FURNACE_DISTRACTION_PENALTY = 8.00
     INVALID_ACTION_PENALTY = 0.50
     MANUAL_ORE_PENALTY = 2.05
     MANUAL_PLATE_REWARD = 10.00
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
+        previous_coal = self.env.inventory["coal"]
         observation, reward, terminated, truncated, info = self.env.step(action)
         previous_max_iron_plates = self._max_iron_plates
         shaping_reward = self._progress_reward()
@@ -168,6 +174,25 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             shaping_reward += self.BOOTSTRAP_SECOND_FURNACE_BONUS
         if self._crafted_extra_bootstrap_furnace(action):
             shaping_reward -= self.BOOTSTRAP_EXTRA_FURNACE_PENALTY
+        if self._placed_recipe_furnace_before_drill(action):
+            shaping_reward -= (
+                self.MILESTONE_BONUSES["placed_stone_furnace"]
+                + self.BOOTSTRAP_RECIPE_FURNACE_PLACEMENT_PENALTY
+            )
+        if self._fuel_task_mined_coal(action, previous_coal):
+            shaping_reward += self.FUEL_TASK_COAL_BONUS
+        if self._fuel_task_placed_stone_furnace(action):
+            shaping_reward -= (
+                self.MILESTONE_BONUSES["placed_stone_furnace"]
+                + self.FUEL_TASK_STONE_FURNACE_DISTRACTION_PENALTY
+            )
+        if self._fuel_task_mined_iron(action):
+            shaping_reward -= self.FUEL_TASK_IRON_DISTRACTION_PENALTY
+        if self._fuel_task_produced_plate(previous_max_iron_plates):
+            shaping_reward -= (
+                self.MILESTONE_BONUSES["iron_plate"]
+                + self.FUEL_TASK_PLATE_DISTRACTION_PENALTY
+            )
         if self._crafted_unneeded_freeplay_gear(action):
             shaping_reward -= self.FREEPLAY_GEAR_PENALTY
         if self._crafted_extra_bootstrap_gear(action):
@@ -254,6 +279,7 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
         return (
             self._manual_bootstrap_allowed()
             and action == Action.CRAFT_STONE_FURNACE.value
+            and self.env.success_condition == "iron_plates"
             and self.env.placed_entities["stone_furnace"] > 0
             and self.env.inventory["stone_furnace"] == 1
         )
@@ -264,6 +290,40 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             and action == Action.CRAFT_STONE_FURNACE.value
             and self.env.placed_entities["stone_furnace"] > 0
             and self.env.inventory["stone_furnace"] > 1
+        )
+
+    def _placed_recipe_furnace_before_drill(self, action: int) -> bool:
+        return (
+            self.env.success_condition == "burner_mining_drill_crafted"
+            and action == Action.PLACE_STONE_FURNACE.value
+            and self.env.inventory["burner_mining_drill"] == 0
+            and self.env.placed_entities["burner_mining_drill"] == 0
+        )
+
+    def _fuel_task_mined_coal(self, action: int, previous_coal: int) -> bool:
+        return (
+            self.env.success_condition == "burner_mining_drill_fueled"
+            and action == Action.MINE_COAL.value
+            and previous_coal == 0
+            and self.env.inventory["coal"] > 0
+        )
+
+    def _fuel_task_placed_stone_furnace(self, action: int) -> bool:
+        return (
+            self.env.success_condition == "burner_mining_drill_fueled"
+            and action == Action.PLACE_STONE_FURNACE.value
+        )
+
+    def _fuel_task_mined_iron(self, action: int) -> bool:
+        return (
+            self.env.success_condition == "burner_mining_drill_fueled"
+            and action == Action.MINE_IRON_ORE.value
+        )
+
+    def _fuel_task_produced_plate(self, previous_max_iron_plates: int) -> bool:
+        return (
+            self.env.success_condition == "burner_mining_drill_fueled"
+            and self.env.inventory["iron_plate"] > previous_max_iron_plates
         )
 
     def _crafted_extra_bootstrap_gear(self, action: int) -> bool:
