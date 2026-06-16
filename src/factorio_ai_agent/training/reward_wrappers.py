@@ -146,12 +146,16 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
     FUEL_TASK_IRON_DISTRACTION_PENALTY = 4.00
     FUEL_TASK_PLATE_DISTRACTION_PENALTY = 6.00
     FUEL_TASK_STONE_FURNACE_DISTRACTION_PENALTY = 8.00
+    FURNACE_TASK_STONE_BONUS = 1.00
+    FURNACE_TASK_EXCESS_STONE_PENALTY = 2.00
+    FURNACE_TASK_RESOURCE_DISTRACTION_PENALTY = 2.00
     INVALID_ACTION_PENALTY = 0.50
     MANUAL_ORE_PENALTY = 2.05
     MANUAL_PLATE_REWARD = 10.00
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
         previous_coal = self.env.inventory["coal"]
+        previous_stone = self.env.inventory["stone"]
         observation, reward, terminated, truncated, info = self.env.step(action)
         previous_max_iron_plates = self._max_iron_plates
         shaping_reward = self._progress_reward()
@@ -193,6 +197,12 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
                 self.MILESTONE_BONUSES["iron_plate"]
                 + self.FUEL_TASK_PLATE_DISTRACTION_PENALTY
             )
+        if self._furnace_task_mined_useful_stone(action):
+            shaping_reward += self.FURNACE_TASK_STONE_BONUS
+        if self._furnace_task_mined_excess_stone(action, previous_stone):
+            shaping_reward -= self.FURNACE_TASK_EXCESS_STONE_PENALTY
+        if self._furnace_task_mined_distraction(action):
+            shaping_reward -= self.FURNACE_TASK_RESOURCE_DISTRACTION_PENALTY
         if self._crafted_unneeded_freeplay_gear(action):
             shaping_reward -= self.FREEPLAY_GEAR_PENALTY
         if self._crafted_extra_bootstrap_gear(action):
@@ -324,6 +334,26 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
         return (
             self.env.success_condition == "burner_mining_drill_fueled"
             and self.env.inventory["iron_plate"] > previous_max_iron_plates
+        )
+
+    def _furnace_task_mined_useful_stone(self, action: int) -> bool:
+        return (
+            self.env.success_condition == "stone_furnace_crafted"
+            and action == Action.MINE_STONE.value
+            and self.env.inventory["stone"] <= 5
+        )
+
+    def _furnace_task_mined_distraction(self, action: int) -> bool:
+        return (
+            self.env.success_condition == "stone_furnace_crafted"
+            and action in {Action.MINE_COAL.value, Action.MINE_IRON_ORE.value}
+        )
+
+    def _furnace_task_mined_excess_stone(self, action: int, previous_stone: int) -> bool:
+        return (
+            self.env.success_condition == "stone_furnace_crafted"
+            and action == Action.MINE_STONE.value
+            and previous_stone >= 5
         )
 
     def _crafted_extra_bootstrap_gear(self, action: int) -> bool:

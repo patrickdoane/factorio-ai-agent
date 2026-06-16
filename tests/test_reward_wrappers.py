@@ -241,6 +241,56 @@ def test_burner_progress_does_not_repeatedly_reward_coal_for_fuel_curriculum() -
     assert "progress_reward" not in info
 
 
+def test_burner_progress_rewards_stone_for_furnace_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            success_condition="stone_furnace_crafted",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.MINE_STONE))
+
+    assert reward == pytest.approx(1.04)
+    assert info["progress_reward"] == 1.05
+
+
+def test_burner_progress_penalizes_distractions_for_furnace_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            success_condition="stone_furnace_crafted",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.MINE_COAL))
+
+    assert reward == pytest.approx(-1.96)
+    assert info["progress_reward"] == pytest.approx(-1.95)
+
+
+def test_burner_progress_penalizes_excess_stone_for_furnace_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=20,
+            target_iron_plates=0,
+            success_condition="stone_furnace_crafted",
+        )
+    )
+    env.reset(seed=1)
+    for _ in range(5):
+        env.step(int(Action.MINE_STONE))
+
+    _, reward, _, _, info = env.step(int(Action.MINE_STONE))
+
+    assert reward == pytest.approx(-1.96)
+    assert info["progress_reward"] == pytest.approx(-1.95)
+
+
 def test_burner_progress_penalizes_furnace_placement_for_fuel_curriculum() -> None:
     env = BurnerProgressRewardWrapper(
         MockFactorioEnv(
