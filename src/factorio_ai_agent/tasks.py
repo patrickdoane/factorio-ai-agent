@@ -118,6 +118,15 @@ TASKS: dict[str, TaskDefinition] = {
         success_condition="collected_iron_plates",
         use_furnace_output_buffer=True,
     ),
+    "buffered-collect-three-plates": TaskDefinition(
+        name="buffered-collect-three-plates",
+        description="Repeatedly smelt and collect three plates through a furnace output buffer.",
+        target_iron_plates=3,
+        max_steps=24,
+        starting_inventory=(("stone_furnace", 1),),
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+    ),
     "bootstrap-craft-drill": TaskDefinition(
         name="bootstrap-craft-drill",
         description="Craft gears and a burner mining drill from prepared plates and furnace.",

@@ -68,6 +68,56 @@ Rollout quality note:
 - It completes `buffered-smelt-plate` in 4 steps and `buffered-collect-plate` in
   5 steps with zero invalid actions.
 
+Current best repeated buffered-collection policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-collect-three-50k.zip`
+- Task: `buffered-collect-three-plates`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `50000`
+
+Benchmark result:
+
+```text
+score:              0.998100
+success_rate:       1.000000
+avg_steps:          19.000000
+avg_reward:         59.810000
+invalid_rate:       0.000000
+eval_episodes:      20
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-collect-three-plates \
+  --total-timesteps 50000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-collect-three-50k.zip
+```
+
+Benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-collect-three-50k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-collect-three-plates \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The learned policy solves repeated furnace-output collection with zero invalid
+  actions.
+- It finishes in 19 steps by sometimes letting the furnace output buffer build up
+  before collection; the scripted shortest repeated loop is 13 steps, so future
+  optimization can target earlier output collection rather than semantics changes.
+
 Current best buffered-collection policy:
 
 - Model path: `/tmp/opencode/maskable-ppo-buffered-collect-plate-10k.zip`

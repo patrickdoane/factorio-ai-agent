@@ -94,10 +94,10 @@ For empty-inventory bootstrap curriculum, use `bootstrap-craft-furnace`,
 full `burner-first-plate` task: crafting a furnace, smelting drill ingredients,
 crafting the drill, and placing/fueling it.
 
-For machine-buffer scenarios, use `buffered-smelt-plate` or
-`buffered-collect-plate`. These tasks keep smelted plates in the furnace output
-buffer instead of moving them directly into inventory; the collection variant
-requires explicitly taking the furnace output.
+For machine-buffer scenarios, use `buffered-smelt-plate`,
+`buffered-collect-plate`, or `buffered-collect-three-plates`. These tasks keep
+smelted plates in the furnace output buffer instead of moving them directly into
+inventory; the collection variants require explicitly taking the furnace output.
 
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
