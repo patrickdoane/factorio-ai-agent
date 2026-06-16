@@ -13,6 +13,61 @@ while `buffered-collect-plate` requires the policy to collect that output with
 `TAKE_FURNACE_OUTPUT`. Older tasks keep their inventory-output behavior by
 default.
 
+Current best multi-task buffer policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-multitask-20k.zip`
+- Tasks: `buffered-smelt-plate`, `buffered-collect-plate`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `20000`
+
+Aggregate benchmark result:
+
+```text
+score:              0.999550
+success_rate:       1.000000
+avg_steps:          4.500000
+avg_reward:         14.955000
+invalid_rate:       0.000000
+eval_episodes:      40
+```
+
+Per-task benchmark results:
+
+```text
+buffered-smelt-plate:   success_rate=1.000000 avg_steps=4.000000 invalid_rate=0.000000
+buffered-collect-plate: success_rate=1.000000 avg_steps=5.000000 invalid_rate=0.000000
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --tasks buffered-smelt-plate,buffered-collect-plate \
+  --total-timesteps 20000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-multitask-20k.zip
+```
+
+Aggregate benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-multitask-20k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-smelt-plate,buffered-collect-plate \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The multi-task policy preserves optimal behavior for both buffer tasks.
+- It completes `buffered-smelt-plate` in 4 steps and `buffered-collect-plate` in
+  5 steps with zero invalid actions.
+
 Current best buffered-collection policy:
 
 - Model path: `/tmp/opencode/maskable-ppo-buffered-collect-plate-10k.zip`
