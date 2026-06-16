@@ -122,8 +122,13 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
 class BurnerProgressRewardWrapper(ProgressRewardWrapper):
     """Shape rewards for explicit burner-chain training tasks."""
 
+    RESOURCE_TARGETS = {
+        **ProgressRewardWrapper.RESOURCE_TARGETS,
+        "stone": 10,
+    }
     MILESTONE_BONUSES = {
         **ProgressRewardWrapper.MILESTONE_BONUSES,
+        "burner_mining_drill": 8.00,
         "placed_stone_furnace": 6.00,
         "placed_burner_mining_drill": 3.00,
         "coal_fuel_inserted": 2.00,
@@ -131,6 +136,11 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
     BURNER_ORE_BONUS = 2.00
     BURNER_REFUEL_BONUS = 4.00
     FREEPLAY_GEAR_PENALTY = 30.00
+    BOOTSTRAP_GEAR_BONUS = 3.00
+    BOOTSTRAP_SECOND_FURNACE_BONUS = 4.00
+    BOOTSTRAP_EXTRA_FURNACE_PENALTY = 5.00
+    BOOTSTRAP_REQUIRED_PLATE_EQUIVALENT = 9
+    BOOTSTRAP_EXTRA_GEAR_PENALTY = 5.00
     INVALID_ACTION_PENALTY = 0.50
     MANUAL_ORE_PENALTY = 2.05
     MANUAL_PLATE_REWARD = 10.00
@@ -148,8 +158,20 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             shaping_reward -= self.MANUAL_PLATE_REWARD
             if self.env.inventory["iron_plate"] > previous_max_iron_plates:
                 shaping_reward -= self.MILESTONE_BONUSES["iron_plate"]
+        if self._produced_repeated_bootstrap_target_plate(info):
+            shaping_reward -= self.MANUAL_PLATE_REWARD
+        if self._produced_excess_bootstrap_manual_plate(previous_max_iron_plates):
+            shaping_reward -= self.MILESTONE_BONUSES["iron_plate"]
+        if self._crafted_useful_bootstrap_gear(action):
+            shaping_reward += self.BOOTSTRAP_GEAR_BONUS
+        if self._crafted_bootstrap_second_furnace(action):
+            shaping_reward += self.BOOTSTRAP_SECOND_FURNACE_BONUS
+        if self._crafted_extra_bootstrap_furnace(action):
+            shaping_reward -= self.BOOTSTRAP_EXTRA_FURNACE_PENALTY
         if self._crafted_unneeded_freeplay_gear(action):
             shaping_reward -= self.FREEPLAY_GEAR_PENALTY
+        if self._crafted_extra_bootstrap_gear(action):
+            shaping_reward -= self.BOOTSTRAP_EXTRA_GEAR_PENALTY
         if not info["valid_action"]:
             shaping_reward -= self.INVALID_ACTION_PENALTY
         if shaping_reward:
@@ -174,6 +196,22 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             and bool(info.get("produced_iron_plate"))
             and self._needs_more_burner_ore()
             and not self._manual_bootstrap_allowed()
+        )
+
+    def _produced_repeated_bootstrap_target_plate(self, info: dict[str, Any]) -> bool:
+        return (
+            self._manual_bootstrap_allowed()
+            and bool(info.get("produced_iron_plate"))
+            and self.env.inventory["iron_plate"] <= self.env.target_iron_plates
+            and self._bootstrap_manual_plate_equivalent() > self.env.target_iron_plates
+        )
+
+    def _produced_excess_bootstrap_manual_plate(self, previous_max_iron_plates: int) -> bool:
+        return (
+            self._manual_bootstrap_allowed()
+            and self.env.inventory["iron_plate"] > previous_max_iron_plates
+            and self._bootstrap_manual_plate_equivalent()
+            > self.BOOTSTRAP_REQUIRED_PLATE_EQUIVALENT
         )
 
     def _needs_more_burner_ore(self) -> bool:
@@ -203,6 +241,44 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             and self.env.require_burner_miner_for_success
             and action == Action.CRAFT_IRON_GEAR_WHEEL.value
             and not self._burner_task_is_successful()
+        )
+
+    def _crafted_useful_bootstrap_gear(self, action: int) -> bool:
+        return (
+            self._manual_bootstrap_allowed()
+            and action == Action.CRAFT_IRON_GEAR_WHEEL.value
+            and self.env.inventory["iron_gear_wheel"] <= 3
+        )
+
+    def _crafted_bootstrap_second_furnace(self, action: int) -> bool:
+        return (
+            self._manual_bootstrap_allowed()
+            and action == Action.CRAFT_STONE_FURNACE.value
+            and self.env.placed_entities["stone_furnace"] > 0
+            and self.env.inventory["stone_furnace"] == 1
+        )
+
+    def _crafted_extra_bootstrap_furnace(self, action: int) -> bool:
+        return (
+            self._manual_bootstrap_allowed()
+            and action == Action.CRAFT_STONE_FURNACE.value
+            and self.env.placed_entities["stone_furnace"] > 0
+            and self.env.inventory["stone_furnace"] > 1
+        )
+
+    def _crafted_extra_bootstrap_gear(self, action: int) -> bool:
+        return (
+            self._manual_bootstrap_allowed()
+            and action == Action.CRAFT_IRON_GEAR_WHEEL.value
+            and self.env.inventory["iron_gear_wheel"] > 3
+        )
+
+    def _bootstrap_manual_plate_equivalent(self) -> int:
+        return (
+            self.env.inventory["iron_plate"]
+            + self.env.inventory["iron_gear_wheel"] * 2
+            + self.env.inventory["burner_mining_drill"] * 9
+            + self.env.placed_entities["burner_mining_drill"] * 9
         )
 
     def _burner_task_is_successful(self) -> bool:

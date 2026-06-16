@@ -177,6 +177,75 @@ def test_manual_sequence_produces_first_iron_plate() -> None:
     assert not truncated
 
 
+def test_curriculum_success_can_require_crafted_furnace() -> None:
+    env = MockFactorioEnv(
+        max_steps=12,
+        target_iron_plates=0,
+        success_condition="stone_furnace_crafted",
+    )
+    env.reset()
+
+    terminated = False
+    for action in [*[Action.MINE_STONE.value] * 5, Action.CRAFT_STONE_FURNACE.value]:
+        observation, reward, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["stone_furnace"] == 1
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert observation["current_objective"] == "Task complete"
+
+
+def test_curriculum_success_can_require_crafted_burner_drill() -> None:
+    env = MockFactorioEnv(
+        max_steps=12,
+        target_iron_plates=0,
+        starting_inventory={"stone_furnace": 1, "iron_plate": 9},
+        success_condition="burner_mining_drill_crafted",
+    )
+    env.reset()
+
+    actions = [
+        Action.CRAFT_IRON_GEAR_WHEEL.value,
+        Action.CRAFT_IRON_GEAR_WHEEL.value,
+        Action.CRAFT_IRON_GEAR_WHEEL.value,
+        Action.CRAFT_BURNER_MINING_DRILL.value,
+    ]
+    terminated = False
+    for action in actions:
+        observation, reward, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["burner_mining_drill"] == 1
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+
+
+def test_curriculum_success_can_require_fueled_burner_drill() -> None:
+    env = MockFactorioEnv(
+        max_steps=10,
+        target_iron_plates=0,
+        starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+        success_condition="burner_mining_drill_fueled",
+    )
+    env.reset()
+
+    actions = [
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+    ]
+    terminated = False
+    for action in actions:
+        observation, reward, terminated, truncated, _ = env.step(action)
+
+    assert observation["placed_entities"]["burner_mining_drill"] == 1
+    assert observation["placed_entities"]["coal_fuel_inserted"] == 1
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+
+
 def test_manual_shortcut_does_not_complete_burner_required_task() -> None:
     env = MockFactorioEnv(max_steps=20, require_burner_miner_for_success=True)
     observation, _ = env.reset()

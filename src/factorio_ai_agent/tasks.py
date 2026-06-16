@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
+
+
+SuccessCondition = Literal[
+    "iron_plates",
+    "stone_furnace_crafted",
+    "burner_mining_drill_crafted",
+    "burner_mining_drill_fueled",
+]
 
 
 FREEPLAY_STARTING_INVENTORY: tuple[tuple[str, int], ...] = (
@@ -23,6 +32,7 @@ class TaskDefinition:
     require_burner_miner_for_success: bool = False
     starting_inventory: tuple[tuple[str, int], ...] = ()
     required_burner_mined_iron_ore: int | None = None
+    success_condition: SuccessCondition = "iron_plates"
 
 
 TASKS: dict[str, TaskDefinition] = {
@@ -70,6 +80,36 @@ TASKS: dict[str, TaskDefinition] = {
         target_iron_plates=10,
         max_steps=180,
         require_burner_miner_for_success=True,
+    ),
+    "bootstrap-craft-furnace": TaskDefinition(
+        name="bootstrap-craft-furnace",
+        description="Mine enough stone and craft the first stone furnace from empty inventory.",
+        target_iron_plates=0,
+        max_steps=12,
+        success_condition="stone_furnace_crafted",
+    ),
+    "bootstrap-smelt-plates": TaskDefinition(
+        name="bootstrap-smelt-plates",
+        description="Use a starter furnace to manually smelt plates for burner-drill crafting.",
+        target_iron_plates=9,
+        max_steps=40,
+        starting_inventory=(("stone_furnace", 1),),
+    ),
+    "bootstrap-craft-drill": TaskDefinition(
+        name="bootstrap-craft-drill",
+        description="Craft gears and a burner mining drill from prepared plates and furnace.",
+        target_iron_plates=0,
+        max_steps=12,
+        starting_inventory=(("stone_furnace", 1), ("iron_plate", 9)),
+        success_condition="burner_mining_drill_crafted",
+    ),
+    "bootstrap-place-and-fuel-drill": TaskDefinition(
+        name="bootstrap-place-and-fuel-drill",
+        description="Place and fuel a prepared burner mining drill.",
+        target_iron_plates=0,
+        max_steps=10,
+        starting_inventory=(("stone_furnace", 1), ("burner_mining_drill", 1)),
+        success_condition="burner_mining_drill_fueled",
     ),
     "freeplay-burner-first-plate": TaskDefinition(
         name="freeplay-burner-first-plate",
@@ -133,4 +173,5 @@ def resolve_task(
         require_burner_miner_for_success=task.require_burner_miner_for_success,
         starting_inventory=task.starting_inventory,
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
+        success_condition=task.success_condition,
     )

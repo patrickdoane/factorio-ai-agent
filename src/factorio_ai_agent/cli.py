@@ -11,9 +11,9 @@ from factorio_ai_agent.envs.numeric_observation_wrapper import NumericObservatio
 from factorio_ai_agent.evaluation import (
     EpisodeResult,
     format_episode_header,
-    format_goal,
     format_result,
     format_summary,
+    format_task_goal,
     format_step,
     run_episode,
     summarize_results,
@@ -100,6 +100,7 @@ def run_ppo(
         require_burner_miner_for_success=task.require_burner_miner_for_success,
         starting_inventory=dict(task.starting_inventory),
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
+        success_condition=task.success_condition,
     )
     wrapped_env = NumericObservationWrapper(env)
     observation, _ = wrapped_env.reset(seed=seed)
@@ -123,7 +124,7 @@ def run_ppo(
         total_reward=total_reward,
         terminated=terminated,
         truncated=truncated,
-        goal=format_goal(task.target_iron_plates),
+        goal=format_task_goal(task),
         status=env.current_objective,
     )
     print(format_result(result, 1))
@@ -409,7 +410,8 @@ def main() -> None:
                 f"target_iron_plates={task.target_iron_plates} "
                 f"max_steps={task.max_steps} "
                 f"require_burner_miner_for_success="
-                f"{task.require_burner_miner_for_success}"
+                f"{task.require_burner_miner_for_success} "
+                f"success_condition={task.success_condition}"
             )
     else:
         parser.error(f"Unknown command: {args.command}")

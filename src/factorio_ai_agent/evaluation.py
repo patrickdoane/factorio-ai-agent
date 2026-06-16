@@ -69,7 +69,7 @@ def run_episode(
         total_reward=total_reward,
         terminated=terminated,
         truncated=truncated,
-        goal=format_goal(task.target_iron_plates),
+        goal=format_task_goal(task),
         status=observation["current_objective"],
     )
     print(format_result(result, episode_number))
@@ -96,6 +96,7 @@ def _make_env(task: TaskDefinition) -> MockFactorioEnv:
         require_burner_miner_for_success=task.require_burner_miner_for_success,
         starting_inventory=dict(task.starting_inventory),
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
+        success_condition=task.success_condition,
     )
 
 
@@ -151,3 +152,13 @@ def format_goal(target_iron_plates: int) -> str:
     if target_iron_plates == 1:
         return "Produce 1 iron plate"
     return f"Produce {target_iron_plates} iron plates"
+
+
+def format_task_goal(task: TaskDefinition) -> str:
+    if task.success_condition == "stone_furnace_crafted":
+        return "Craft stone furnace"
+    if task.success_condition == "burner_mining_drill_crafted":
+        return "Craft burner mining drill"
+    if task.success_condition == "burner_mining_drill_fueled":
+        return "Place and fuel burner mining drill"
+    return format_goal(task.target_iron_plates)

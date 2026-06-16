@@ -88,6 +88,12 @@ factorio-ai run-scripted --task three-plates
 For explicit burner-chain scenarios, use `burner-first-plate`,
 `burner-three-plates`, or `burner-ten-plates`.
 
+For empty-inventory bootstrap curriculum, use `bootstrap-craft-furnace`,
+`bootstrap-smelt-plates`, `bootstrap-craft-drill`, or
+`bootstrap-place-and-fuel-drill`. These isolate the subskills needed before the
+full `burner-first-plate` task: crafting a furnace, smelting drill ingredients,
+crafting the drill, and placing/fueling it.
+
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
 start with `1` burner mining drill, `1` stone furnace, and `8` iron plates.
@@ -216,13 +222,14 @@ belts, inserters, or furnace fuel separately yet.
 
 Named tasks currently include the legacy simplified tasks `first-plate`,
 `three-plates`, and `ten-plates`, plus explicit `manual-first-plate`,
-`burner-first-plate`, `burner-three-plates`, and `burner-ten-plates` tasks. The
-`freeplay-burner-*` tasks use the vanilla Freeplay crashland inventory and target
-additional iron plates above the starting `8`. The legacy names are kept to
-preserve prior benchmark history. Burner-chain tasks require enough ore to be
-produced by the burner miner before success is counted. CLI commands accept
-`--task` and still allow low-level overrides such as `--target-iron-plates` and
-`--max-steps` for quick experiments.
+`burner-first-plate`, `burner-three-plates`, and `burner-ten-plates` tasks.
+The `bootstrap-*` tasks are curriculum subgoals for empty-inventory burner
+startup. The `freeplay-burner-*` tasks use the vanilla Freeplay crashland
+inventory and target additional iron plates above the starting `8`. The legacy
+names are kept to preserve prior benchmark history. Burner-chain tasks require
+enough ore to be produced by the burner miner before success is counted. CLI
+commands accept `--task` and still allow low-level overrides such as
+`--target-iron-plates` and `--max-steps` for quick experiments.
 
 For reinforcement learning experiments, `NumericObservationWrapper` converts the
 mock dictionary observation into a fixed numeric vector and drops the string

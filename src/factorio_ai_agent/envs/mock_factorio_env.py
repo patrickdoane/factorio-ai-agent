@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import IntEnum
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 import gymnasium as gym
 import numpy as np
@@ -30,6 +30,12 @@ Inventory = dict[str, int]
 PlacedEntities = dict[str, int]
 Observation = dict[str, Any]
 ProductionState = dict[str, int]
+SuccessCondition = Literal[
+    "iron_plates",
+    "stone_furnace_crafted",
+    "burner_mining_drill_crafted",
+    "burner_mining_drill_fueled",
+]
 
 
 class MockFactorioEnv(gym.Env[Observation, int]):
@@ -55,6 +61,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         require_burner_miner_for_success: bool = False,
         starting_inventory: Mapping[str, int] | None = None,
         required_burner_mined_iron_ore: int | None = None,
+        success_condition: SuccessCondition = "iron_plates",
     ) -> None:
         super().__init__()
         self.max_steps = max_steps
@@ -63,6 +70,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         self.furnace_ticks_per_plate = furnace_ticks_per_plate
         self.require_burner_miner_for_success = require_burner_miner_for_success
         self.starting_inventory = dict(starting_inventory or {})
+        self.success_condition = success_condition
         self.required_burner_mined_iron_ore = (
             required_burner_mined_iron_ore
             if required_burner_mined_iron_ore is not None
@@ -159,8 +167,10 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             reward += 10.0
             info["produced_iron_plate"] = True
 
-        self.current_objective = self._objective()
         terminated = self._is_success()
+        if terminated and not produced_plate:
+            reward += 10.0
+        self.current_objective = self._objective()
         truncated = self.step_count >= self.max_steps and not terminated
         return self._get_obs(), reward, terminated, truncated, info
 
@@ -303,6 +313,16 @@ class MockFactorioEnv(gym.Env[Observation, int]):
     def _objective(self) -> str:
         if self._is_success():
             return "Task complete"
+        if self.success_condition == "stone_furnace_crafted":
+            return "Craft stone furnace"
+        if self.success_condition == "burner_mining_drill_crafted":
+            if self.inventory["iron_gear_wheel"] < 3:
+                return "Craft iron gear wheels"
+            return "Craft burner mining drill"
+        if self.success_condition == "burner_mining_drill_fueled":
+            if self.placed_entities["burner_mining_drill"] < 1:
+                return "Place burner mining drill"
+            return "Fuel burner miner"
         has_burner_miner = (
             self.inventory["burner_mining_drill"] >= 1
             or self.placed_entities["burner_mining_drill"] >= 1
@@ -335,6 +355,21 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         return f"Produce {remaining} more iron plates"
 
     def _is_success(self) -> bool:
+        if self.success_condition == "stone_furnace_crafted":
+            return (
+                self.inventory["stone_furnace"] >= 1
+                or self.placed_entities["stone_furnace"] >= 1
+            )
+        if self.success_condition == "burner_mining_drill_crafted":
+            return (
+                self.inventory["burner_mining_drill"] >= 1
+                or self.placed_entities["burner_mining_drill"] >= 1
+            )
+        if self.success_condition == "burner_mining_drill_fueled":
+            return (
+                self.placed_entities["burner_mining_drill"] >= 1
+                and self.placed_entities["coal_fuel_inserted"] >= 1
+            )
         if self.inventory["iron_plate"] < self.target_iron_plates:
             return False
         if not self.require_burner_miner_for_success:
