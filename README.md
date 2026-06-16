@@ -102,6 +102,9 @@ For stricter furnace I/O scenarios, use `buffered-insert-smelt-plate`,
 `buffered-insert-collect-plate`, or `buffered-insert-collect-three-plates`.
 These require explicitly inserting ore into the furnace input buffer before
 smelting can advance.
+For burner miner output scenarios, use `buffered-miner-output-ore` or
+`buffered-miner-collect-ore`. These keep burner-mined ore in the miner output
+buffer until the collection variant explicitly takes it.
 
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
@@ -208,6 +211,7 @@ factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates
 - Place the furnace and burner miner.
 - Insert coal fuel.
 - Insert iron ore into a furnace input buffer.
+- Take burner miner output.
 - Take furnace output.
 - Wait for the miner and furnace production timers to produce iron plates.
 
@@ -227,10 +231,10 @@ The observation is a dictionary containing:
 - `current_objective`
 
 `production_state` tracks miner progress, furnace progress, burner-mined ore,
-furnace input/output buffers, and the target iron plate count for the episode.
-This is still a simplified model: it captures the need to wait for production,
-feed furnace input, and collect machine output without modeling positions, belts,
-inserters, or furnace fuel separately yet.
+burner miner output buffers, furnace input/output buffers, and the target iron
+plate count for the episode. This is still a simplified model: it captures the
+need to wait for production, feed furnace input, and collect machine output
+without modeling positions, belts, inserters, or furnace fuel separately yet.
 
 Named tasks currently include the legacy simplified tasks `first-plate`,
 `three-plates`, and `ten-plates`, plus explicit `manual-first-plate`,

@@ -4,6 +4,79 @@ This file records durable project milestones and the commands needed to reproduc
 them. Saved models under `/tmp/opencode` are local experiment artifacts; retrain
 them with the listed commands when a clean machine needs the same policy.
 
+## 2026-06-16: Burner Miner Output Buffer Policies
+
+The machine-local buffer model now includes burner miner output. The
+`buffered-miner-*` tasks require placing and fueling a burner mining drill,
+waiting for ore production, and optionally collecting that ore with
+`TAKE_MINER_OUTPUT`. Older burner tasks still move miner output directly into
+inventory unless `use_miner_output_buffer` is enabled.
+
+Current best two-task miner-output policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-miner-multitask-20k.zip`
+- Tasks: `buffered-miner-output-ore`, `buffered-miner-collect-ore`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `20000`
+
+Aggregate benchmark result:
+
+```text
+score:              0.999450
+success_rate:       1.000000
+avg_steps:          5.500000
+avg_reward:         9.945000
+invalid_rate:       0.000000
+eval_episodes:      40
+```
+
+Per-task benchmark results:
+
+```text
+buffered-miner-output-ore:  success_rate=1.000000 avg_steps=5.000000 invalid_rate=0.000000
+buffered-miner-collect-ore: success_rate=1.000000 avg_steps=6.000000 invalid_rate=0.000000
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --tasks buffered-miner-output-ore,buffered-miner-collect-ore \
+  --total-timesteps 20000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-miner-multitask-20k.zip
+```
+
+Aggregate benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-miner-multitask-20k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-miner-output-ore,buffered-miner-collect-ore \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Specialist policy references:
+
+```text
+buffered-miner-output-ore:  model=/tmp/opencode/maskable-ppo-buffered-miner-output-ore-10k.zip  success_rate=1.000000 avg_steps=5.000000 invalid_rate=0.000000
+buffered-miner-collect-ore: model=/tmp/opencode/maskable-ppo-buffered-miner-collect-ore-10k.zip success_rate=1.000000 avg_steps=6.000000 invalid_rate=0.000000
+```
+
+Rollout quality note:
+
+- `buffered-miner-output-ore` follows the 5-step sequence: place burner miner,
+  mine coal, insert fuel, wait, wait.
+- `buffered-miner-collect-ore` adds `TAKE_MINER_OUTPUT` as step 6 and ends with
+  `iron_ore=1`, `miner_output_iron_ore=0`.
+- This completes the source-side machine buffer needed before adding transfers
+  from miner output to furnace input.
+
 ## 2026-06-16: Furnace Input Buffer Policies
 
 The furnace buffer generation now includes explicit furnace input as well as
