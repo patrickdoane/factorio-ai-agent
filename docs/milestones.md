@@ -4,12 +4,63 @@ This file records durable project milestones and the commands needed to reproduc
 them. Saved models under `/tmp/opencode` are local experiment artifacts; retrain
 them with the listed commands when a clean machine needs the same policy.
 
-## 2026-06-16: First Furnace Output Buffer Policy
+## 2026-06-16: Furnace Output Buffer Policies
 
-The next training generation starts with explicit furnace output buffer state. The
-`buffered-smelt-plate` task keeps smelted plates in `furnace_output_iron_plate`
-instead of moving them directly into inventory, while older tasks keep their
-inventory-output behavior by default.
+The next training generation starts with explicit furnace output buffer state and
+explicit output collection. The `buffered-smelt-plate` task keeps smelted plates
+in `furnace_output_iron_plate` instead of moving them directly into inventory,
+while `buffered-collect-plate` requires the policy to collect that output with
+`TAKE_FURNACE_OUTPUT`. Older tasks keep their inventory-output behavior by
+default.
+
+Current best buffered-collection policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-collect-plate-10k.zip`
+- Task: `buffered-collect-plate`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `10000`
+
+Benchmark result:
+
+```text
+score:              0.999500
+success_rate:       1.000000
+avg_steps:          5.000000
+avg_reward:         19.950000
+invalid_rate:       0.000000
+eval_episodes:      20
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-collect-plate \
+  --total-timesteps 10000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-collect-plate-10k.zip
+```
+
+Benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-collect-plate-10k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-collect-plate \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The learned policy follows the optimal 5-step sequence: place furnace, mine ore,
+  wait, wait, take furnace output.
+- Final state has `iron_plate=1` and `furnace_output_iron_plate=0`, confirming
+  success requires possession rather than only machine-local output.
 
 Current best buffered-smelting policy:
 

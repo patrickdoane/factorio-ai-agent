@@ -9,6 +9,7 @@ from typing import Literal
 SuccessCondition = Literal[
     "iron_plates",
     "buffered_iron_plates",
+    "collected_iron_plates",
     "smelted_iron_plates",
     "stone_furnace_crafted",
     "burner_mining_drill_crafted",
@@ -106,6 +107,15 @@ TASKS: dict[str, TaskDefinition] = {
         max_steps=10,
         starting_inventory=(("stone_furnace", 1),),
         success_condition="buffered_iron_plates",
+        use_furnace_output_buffer=True,
+    ),
+    "buffered-collect-plate": TaskDefinition(
+        name="buffered-collect-plate",
+        description="Smelt one iron plate into a furnace output buffer, then collect it.",
+        target_iron_plates=1,
+        max_steps=12,
+        starting_inventory=(("stone_furnace", 1),),
+        success_condition="collected_iron_plates",
         use_furnace_output_buffer=True,
     ),
     "bootstrap-craft-drill": TaskDefinition(

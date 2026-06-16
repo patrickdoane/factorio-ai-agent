@@ -107,7 +107,7 @@ def test_make_training_envs_samples_named_tasks() -> None:
         "freeplay-burner-first-plate",
         "freeplay-burner-three-plates",
     }
-    assert env.action_masks().shape == (10,)
+    assert env.action_masks().shape == (env.action_space.n,)
 
 
 def test_make_training_env_applies_progress_reward_shaping() -> None:

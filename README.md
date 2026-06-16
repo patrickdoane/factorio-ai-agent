@@ -94,9 +94,10 @@ For empty-inventory bootstrap curriculum, use `bootstrap-craft-furnace`,
 full `burner-first-plate` task: crafting a furnace, smelting drill ingredients,
 crafting the drill, and placing/fueling it.
 
-For the first machine-buffer scenario, use `buffered-smelt-plate`. This task
-keeps smelted plates in the furnace output buffer instead of moving them
-directly into inventory.
+For machine-buffer scenarios, use `buffered-smelt-plate` or
+`buffered-collect-plate`. These tasks keep smelted plates in the furnace output
+buffer instead of moving them directly into inventory; the collection variant
+requires explicitly taking the furnace output.
 
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
@@ -202,6 +203,7 @@ factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates
 - Craft a burner mining drill.
 - Place the furnace and burner miner.
 - Insert coal fuel.
+- Take furnace output.
 - Wait for the miner and furnace production timers to produce iron plates.
 
 The mock early-game recipes are intentionally closer to vanilla Factorio than
@@ -220,9 +222,10 @@ The observation is a dictionary containing:
 - `current_objective`
 
 `production_state` tracks miner progress, furnace progress, burner-mined ore,
-and the target iron plate count for the episode. This is still a simplified
-model: it captures the need to wait for production without modeling positions,
-belts, inserters, or furnace fuel separately yet.
+furnace output buffers, and the target iron plate count for the episode. This is
+still a simplified model: it captures the need to wait for production and collect
+machine output without modeling positions, belts, inserters, or furnace fuel
+separately yet.
 
 Named tasks currently include the legacy simplified tasks `first-plate`,
 `three-plates`, and `ten-plates`, plus explicit `manual-first-plate`,
@@ -247,8 +250,8 @@ policies for current tasks.
 
 The mock environment and numeric wrapper also expose `action_masks()`, returning
 a NumPy boolean mask of valid discrete actions. Standard Stable-Baselines3 PPO
-does not consume this mask directly; it is intended for future `sb3-contrib`
-MaskablePPO support or custom training code.
+does not consume this mask directly; MaskablePPO from `sb3-contrib` uses it for
+mask-aware training.
 
 ## Roadmap
 
