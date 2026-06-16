@@ -41,6 +41,7 @@ class TaskDefinition:
     use_furnace_output_buffer: bool = False
     use_furnace_input_buffer: bool = False
     use_miner_output_buffer: bool = False
+    use_miner_output_direction: bool = False
 
 
 TASKS: dict[str, TaskDefinition] = {
@@ -190,6 +191,18 @@ TASKS: dict[str, TaskDefinition] = {
         use_furnace_input_buffer=True,
         use_miner_output_buffer=True,
     ),
+    "buffered-miner-direct-furnace-plate": TaskDefinition(
+        name="buffered-miner-direct-furnace-plate",
+        description="Place a burner miner with output aligned to a furnace input buffer and collect a plate.",
+        target_iron_plates=1,
+        max_steps=12,
+        starting_inventory=(("stone_furnace", 1), ("burner_mining_drill", 1)),
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+        use_miner_output_buffer=True,
+        use_miner_output_direction=True,
+    ),
     "bootstrap-craft-drill": TaskDefinition(
         name="bootstrap-craft-drill",
         description="Craft gears and a burner mining drill from prepared plates and furnace.",
@@ -272,4 +285,5 @@ def resolve_task(
         use_furnace_output_buffer=task.use_furnace_output_buffer,
         use_furnace_input_buffer=task.use_furnace_input_buffer,
         use_miner_output_buffer=task.use_miner_output_buffer,
+        use_miner_output_direction=task.use_miner_output_direction,
     )

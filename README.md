@@ -109,6 +109,9 @@ For direct miner-to-furnace transfer, use `buffered-miner-transfer-plate`. This
 uses burner miner output, furnace input, and furnace output buffers; the policy
 must transfer ore from miner output into furnace input before smelting can
 advance.
+For output-direction scenarios, use `buffered-miner-direct-furnace-plate`. This
+places the burner miner with its output aligned to the furnace input buffer, so
+mined ore enters the furnace without an explicit transfer action.
 
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
@@ -213,6 +216,7 @@ factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates
 - Craft iron gear wheels.
 - Craft a burner mining drill.
 - Place the furnace and burner miner.
+- Place a burner miner with output aligned to a furnace input buffer.
 - Insert coal fuel.
 - Insert iron ore into a furnace input buffer.
 - Take burner miner output.
@@ -237,9 +241,11 @@ The observation is a dictionary containing:
 
 `production_state` tracks miner progress, furnace progress, burner-mined ore,
 burner miner output buffers, furnace input/output buffers, and the target iron
-plate count for the episode. This is still a simplified model: it captures the
-need to wait for production, feed furnace input, and collect machine output
-without modeling positions, belts, inserters, or furnace fuel separately yet.
+plate count for the episode. `placed_entities` also tracks whether a burner
+miner output is aligned to a furnace input. This is still a simplified model: it
+captures the need to wait for production, feed furnace input, and collect
+machine output without modeling full positions, belts, inserters, or furnace fuel
+separately yet.
 
 Named tasks currently include the legacy simplified tasks `first-plate`,
 `three-plates`, and `ten-plates`, plus explicit `manual-first-plate`,

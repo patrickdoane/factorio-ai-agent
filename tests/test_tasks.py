@@ -23,6 +23,7 @@ def test_task_registry_contains_named_plate_tasks() -> None:
         "buffered-miner-output-ore",
         "buffered-miner-collect-ore",
         "buffered-miner-transfer-plate",
+        "buffered-miner-direct-furnace-plate",
         "bootstrap-craft-drill",
         "bootstrap-place-and-fuel-drill",
         "freeplay-burner-first-plate",
@@ -68,6 +69,12 @@ def test_task_registry_contains_named_plate_tasks() -> None:
     assert get_task("buffered-miner-transfer-plate").use_furnace_output_buffer
     assert get_task("buffered-miner-transfer-plate").use_furnace_input_buffer
     assert get_task("buffered-miner-transfer-plate").use_miner_output_buffer
+    direct_task = get_task("buffered-miner-direct-furnace-plate")
+    assert direct_task.success_condition == "collected_iron_plates"
+    assert direct_task.use_furnace_output_buffer
+    assert direct_task.use_furnace_input_buffer
+    assert direct_task.use_miner_output_buffer
+    assert direct_task.use_miner_output_direction
     assert get_task("bootstrap-craft-drill").success_condition == "burner_mining_drill_crafted"
     assert (
         get_task("bootstrap-place-and-fuel-drill").success_condition
@@ -87,6 +94,7 @@ def test_resolve_task_applies_overrides() -> None:
     assert not task.use_furnace_output_buffer
     assert not task.use_furnace_input_buffer
     assert not task.use_miner_output_buffer
+    assert not task.use_miner_output_direction
 
 
 def test_resolve_task_preserves_burner_requirement() -> None:

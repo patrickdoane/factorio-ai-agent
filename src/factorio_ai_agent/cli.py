@@ -104,6 +104,7 @@ def run_ppo(
         use_furnace_output_buffer=task.use_furnace_output_buffer,
         use_furnace_input_buffer=task.use_furnace_input_buffer,
         use_miner_output_buffer=task.use_miner_output_buffer,
+        use_miner_output_direction=task.use_miner_output_direction,
     )
     wrapped_env = NumericObservationWrapper(env)
     observation, _ = wrapped_env.reset(seed=seed)

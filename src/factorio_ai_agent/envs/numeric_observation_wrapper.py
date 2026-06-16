@@ -24,6 +24,7 @@ PLACED_ENTITY_KEYS = (
     "stone_furnace",
     "burner_mining_drill",
     "coal_fuel_inserted",
+    "burner_mining_drill_output_to_furnace",
 )
 PRODUCTION_STATE_KEYS = (
     "miner_progress",

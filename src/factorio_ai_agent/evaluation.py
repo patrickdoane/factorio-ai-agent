@@ -100,6 +100,7 @@ def _make_env(task: TaskDefinition) -> MockFactorioEnv:
         use_furnace_output_buffer=task.use_furnace_output_buffer,
         use_furnace_input_buffer=task.use_furnace_input_buffer,
         use_miner_output_buffer=task.use_miner_output_buffer,
+        use_miner_output_direction=task.use_miner_output_direction,
     )
 
 

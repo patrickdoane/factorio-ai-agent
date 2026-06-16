@@ -4,6 +4,66 @@ This file records durable project milestones and the commands needed to reproduc
 them. Saved models under `/tmp/opencode` are local experiment artifacts; retrain
 them with the listed commands when a clean machine needs the same policy.
 
+## 2026-06-16: Miner Output Direction To Furnace
+
+The mock logistics model now includes a spatial-lite burner miner output
+direction. `PLACE_BURNER_MINING_DRILL_OUTPUT_TO_FURNACE` places a burner mining
+drill whose output is aligned to an already placed furnace. When that aligned
+miner produces ore, the ore enters `furnace_input_iron_ore` directly instead of
+appearing in `miner_output_iron_ore`. This better matches the canonical early
+Factorio miner-to-furnace pattern and keeps inserters out of miner extraction.
+
+Current best direct-output specialist:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-miner-direct-furnace-plate-30k.zip`
+- Task: `buffered-miner-direct-furnace-plate`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `30000`
+
+Benchmark result:
+
+```text
+score:              0.999200
+success_rate:       1.000000
+avg_steps:          8.000000
+avg_reward:         19.920000
+invalid_rate:       0.000000
+eval_episodes:      20
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-miner-direct-furnace-plate \
+  --total-timesteps 30000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-miner-direct-furnace-plate-30k.zip
+```
+
+Benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-miner-direct-furnace-plate-30k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-miner-direct-furnace-plate \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The learned policy follows the 8-step sequence: place furnace, place burner
+  miner output to furnace, mine coal, insert fuel, wait, wait, wait, take furnace
+  output.
+- The aligned miner creates `furnace_input_iron_ore=1` and leaves
+  `miner_output_iron_ore=0`, so this is output-direction behavior rather than
+  inserter-like extraction from the miner.
+
 ## 2026-06-16: Miner Output To Furnace Input Transfer
 
 The machine-local buffer model now supports an explicit direct transfer from a
