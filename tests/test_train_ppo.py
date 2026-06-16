@@ -59,3 +59,18 @@ def test_make_training_env_applies_progress_reward_shaping() -> None:
 
     assert reward == 0.04
     assert info["progress_reward"] == 0.05
+
+
+def test_make_training_env_applies_burner_progress_reward_shaping() -> None:
+    env = train_ppo_module._make_training_env(  # type: ignore[attr-defined]
+        "burner-first-plate",
+        reward_shaping="burner-progress",
+    )
+    env.reset(seed=1)
+    for action in [2, 2, 2, 2, 2, 3, 5, 0, 8]:
+        env.step(action)
+
+    _, reward, _, _, info = env.step(8)
+
+    assert reward == pytest.approx(-0.01)
+    assert info["progress_reward"] == -10.0

@@ -8,7 +8,10 @@ from pathlib import Path
 from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv
 from factorio_ai_agent.envs.numeric_observation_wrapper import NumericObservationWrapper
 from factorio_ai_agent.tasks import resolve_task
-from factorio_ai_agent.training.reward_wrappers import ProgressRewardWrapper
+from factorio_ai_agent.training.reward_wrappers import (
+    BurnerProgressRewardWrapper,
+    ProgressRewardWrapper,
+)
 
 
 def train_ppo(
@@ -79,6 +82,8 @@ def _make_training_env(
     )
     if reward_shaping == "progress":
         env = ProgressRewardWrapper(env)  # type: ignore[assignment]
+    if reward_shaping == "burner-progress":
+        env = BurnerProgressRewardWrapper(env)  # type: ignore[assignment]
     return NumericObservationWrapper(
         env
     )
@@ -130,8 +135,10 @@ def _validate_ppo_config(
         raise ValueError("batch_size must be less than or equal to n_steps.")
     if eval_episodes < 0:
         raise ValueError("eval_episodes must be zero or greater.")
-    if reward_shaping not in {"none", "progress"}:
-        raise ValueError("reward_shaping must be 'none' or 'progress'.")
+    if reward_shaping not in {"none", "progress", "burner-progress"}:
+        raise ValueError(
+            "reward_shaping must be 'none', 'progress', or 'burner-progress'."
+        )
 
 
 def _runtime_supports_torch() -> bool:

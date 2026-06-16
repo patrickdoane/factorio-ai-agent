@@ -275,7 +275,7 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument("--eval-episodes", type=int, default=0)
     train_parser.add_argument(
         "--reward-shaping",
-        choices=["none", "progress"],
+        choices=["none", "progress", "burner-progress"],
         default="none",
         help="Optional training-only reward shaping. Benchmark rewards are unchanged.",
     )

@@ -33,9 +33,11 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
 
     def __init__(self, env: MockFactorioEnv) -> None:
         super().__init__(env)
+        self._penalized_manual_plates = 0
         self._max_resource_counts = dict.fromkeys(self.RESOURCE_TARGETS, 0)
         self._achieved_milestones: set[str] = set()
         self._max_iron_plates = 0
+        self._max_burner_mined_ore = 0
 
     @property
     def unwrapped_env(self) -> MockFactorioEnv:
@@ -52,6 +54,8 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
         }
         self._achieved_milestones = set()
         self._max_iron_plates = self.env.inventory["iron_plate"]
+        self._max_burner_mined_ore = self.env.production_state["burner_mined_iron_ore"]
+        self._penalized_manual_plates = self.env.inventory["iron_plate"]
         return observation, info
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
@@ -107,3 +111,33 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
             return 0.0
         self._achieved_milestones.add(bonus_key)
         return self.MILESTONE_BONUSES[bonus_key]
+
+
+class BurnerProgressRewardWrapper(ProgressRewardWrapper):
+    """Shape rewards for explicit burner-chain training tasks."""
+
+    BURNER_ORE_BONUS = 2.00
+    MANUAL_PLATE_REWARD = 10.00
+
+    def _progress_reward(self) -> float:
+        reward = super()._progress_reward()
+
+        if self.env.production_state["burner_mined_iron_ore"] > self._max_burner_mined_ore:
+            reward += (
+                self.env.production_state["burner_mined_iron_ore"]
+                - self._max_burner_mined_ore
+            ) * self.BURNER_ORE_BONUS
+            self._max_burner_mined_ore = self.env.production_state["burner_mined_iron_ore"]
+
+        if (
+            self.env.require_burner_miner_for_success
+            and self.env.inventory["iron_plate"] > self._penalized_manual_plates
+            and self.env.production_state["burner_mined_iron_ore"] == 0
+        ):
+            manual_plates = self.env.inventory["iron_plate"] - self._penalized_manual_plates
+            reward -= manual_plates * (
+                self.MANUAL_PLATE_REWARD + self.MILESTONE_BONUSES["iron_plate"]
+            )
+            self._penalized_manual_plates = self.env.inventory["iron_plate"]
+
+        return reward

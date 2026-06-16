@@ -100,7 +100,7 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
             "--eval-episodes",
             "2",
             "--reward-shaping",
-            "progress",
+            "burner-progress",
         ]
     )
 
@@ -112,7 +112,7 @@ def test_train_ppo_parser_accepts_quick_run_options() -> None:
     assert args.seed == 42
     assert args.save_path == "models/test.zip"
     assert args.eval_episodes == 2
-    assert args.reward_shaping == "progress"
+    assert args.reward_shaping == "burner-progress"
 
 
 def test_run_ppo_parser_accepts_rollout_options() -> None:

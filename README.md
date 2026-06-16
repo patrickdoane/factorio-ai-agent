@@ -99,6 +99,13 @@ benchmark rewards unchanged:
 factorio-ai train-ppo --task first-plate --total-timesteps 50000 --reward-shaping progress --save-path /tmp/opencode/ppo-shaped-first.zip
 ```
 
+For explicit burner-chain tasks, use `burner-progress` shaping so manual plate
+shortcuts do not receive the large completion reward during training:
+
+```bash
+factorio-ai train-ppo --task burner-first-plate --total-timesteps 50000 --reward-shaping burner-progress --save-path /tmp/opencode/ppo-burner-first.zip
+```
+
 Inspect a saved PPO policy with legible step-by-step output:
 
 ```bash
