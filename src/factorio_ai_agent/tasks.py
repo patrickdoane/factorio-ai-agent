@@ -37,6 +37,7 @@ class TaskDefinition:
     required_burner_mined_iron_ore: int | None = None
     success_condition: SuccessCondition = "iron_plates"
     use_furnace_output_buffer: bool = False
+    use_furnace_input_buffer: bool = False
 
 
 TASKS: dict[str, TaskDefinition] = {
@@ -127,6 +128,36 @@ TASKS: dict[str, TaskDefinition] = {
         success_condition="collected_iron_plates",
         use_furnace_output_buffer=True,
     ),
+    "buffered-insert-smelt-plate": TaskDefinition(
+        name="buffered-insert-smelt-plate",
+        description="Insert ore into a furnace input buffer and smelt one buffered plate.",
+        target_iron_plates=1,
+        max_steps=12,
+        starting_inventory=(("stone_furnace", 1),),
+        success_condition="buffered_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+    ),
+    "buffered-insert-collect-plate": TaskDefinition(
+        name="buffered-insert-collect-plate",
+        description="Insert ore into a furnace input buffer, smelt one plate, and collect it.",
+        target_iron_plates=1,
+        max_steps=14,
+        starting_inventory=(("stone_furnace", 1),),
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+    ),
+    "buffered-insert-collect-three-plates": TaskDefinition(
+        name="buffered-insert-collect-three-plates",
+        description="Repeatedly insert, smelt, and collect three plates through furnace buffers.",
+        target_iron_plates=3,
+        max_steps=30,
+        starting_inventory=(("stone_furnace", 1),),
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+    ),
     "bootstrap-craft-drill": TaskDefinition(
         name="bootstrap-craft-drill",
         description="Craft gears and a burner mining drill from prepared plates and furnace.",
@@ -207,4 +238,5 @@ def resolve_task(
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
         success_condition=task.success_condition,
         use_furnace_output_buffer=task.use_furnace_output_buffer,
+        use_furnace_input_buffer=task.use_furnace_input_buffer,
     )

@@ -102,6 +102,7 @@ def run_ppo(
         required_burner_mined_iron_ore=task.required_burner_mined_iron_ore,
         success_condition=task.success_condition,
         use_furnace_output_buffer=task.use_furnace_output_buffer,
+        use_furnace_input_buffer=task.use_furnace_input_buffer,
     )
     wrapped_env = NumericObservationWrapper(env)
     observation, _ = wrapped_env.reset(seed=seed)

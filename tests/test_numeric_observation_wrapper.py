@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (24,)
+    assert observation.shape == (25,)
     assert env.observation_space.contains(observation)
 
 
@@ -34,6 +34,7 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         0.0,
         0.0,
         1.0,
+        0.0,
         0.0,
         0.0,
         0.0,
@@ -107,6 +108,27 @@ def test_numeric_wrapper_exposes_furnace_output_buffer() -> None:
     observation, _, _, _, _ = env.step(Action.WAIT.value)
 
     assert observation.tolist()[15] == 1.0
+
+
+def test_numeric_wrapper_exposes_furnace_input_buffer() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(
+            starting_inventory={"stone_furnace": 1},
+            success_condition="buffered_iron_plates",
+            use_furnace_output_buffer=True,
+            use_furnace_input_buffer=True,
+        )
+    )
+    env.reset()
+
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.MINE_IRON_ORE.value,
+    ]:
+        env.step(action)
+    observation, _, _, _, _ = env.step(Action.INSERT_IRON_ORE_INTO_FURNACE.value)
+
+    assert observation.tolist()[16] == 1.0
 
 
 def test_numeric_wrapper_exposes_action_masks() -> None:

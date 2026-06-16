@@ -547,6 +547,140 @@ def test_buffered_collection_repeats_until_target_inventory_count() -> None:
     assert info["valid_action"] is True
 
 
+def test_furnace_input_buffer_requires_explicit_ore_insertion() -> None:
+    env = MockFactorioEnv(
+        max_steps=12,
+        target_iron_plates=1,
+        starting_inventory={"stone_furnace": 1},
+        success_condition="buffered_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+    )
+    observation, _ = env.reset()
+
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert not env.valid_action_mask()[Action.INSERT_IRON_ORE_INTO_FURNACE.value]
+    assert not env.valid_action_mask()[Action.WAIT.value]
+
+    observation, _, terminated, truncated, _ = env.step(Action.PLACE_STONE_FURNACE.value)
+    assert not env.valid_action_mask()[Action.INSERT_IRON_ORE_INTO_FURNACE.value]
+    assert not env.valid_action_mask()[Action.WAIT.value]
+    assert not terminated
+    assert not truncated
+
+    observation, _, terminated, truncated, _ = env.step(Action.MINE_IRON_ORE.value)
+    assert observation["current_objective"] == "Insert iron ore into furnace"
+    assert env.valid_action_mask()[Action.INSERT_IRON_ORE_INTO_FURNACE.value]
+    assert not env.valid_action_mask()[Action.WAIT.value]
+    assert not terminated
+    assert not truncated
+
+    observation, _, terminated, truncated, info = env.step(Action.WAIT.value)
+    assert info["valid_action"] is False
+    assert observation["inventory"]["iron_ore"] == 1
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert not terminated
+    assert not truncated
+
+    observation, _, terminated, truncated, info = env.step(
+        Action.INSERT_IRON_ORE_INTO_FURNACE.value
+    )
+    assert info["valid_action"] is True
+    assert observation["inventory"]["iron_ore"] == 0
+    assert observation["production_state"]["furnace_input_iron_ore"] == 1
+    assert env.valid_action_mask()[Action.WAIT.value]
+    assert not terminated
+    assert not truncated
+
+    for action in [Action.WAIT.value, Action.WAIT.value]:
+        observation, reward, terminated, truncated, info = env.step(action)
+
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert observation["production_state"]["furnace_output_iron_plate"] == 1
+    assert observation["current_objective"] == "Task complete"
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["produced_iron_plate"] is True
+
+
+def test_furnace_input_collection_moves_inserted_ore_to_inventory_plate() -> None:
+    env = MockFactorioEnv(
+        max_steps=14,
+        target_iron_plates=1,
+        starting_inventory={"stone_furnace": 1},
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+    )
+    env.reset()
+
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.MINE_IRON_ORE.value,
+        Action.INSERT_IRON_ORE_INTO_FURNACE.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["iron_plate"] == 0
+    assert observation["production_state"]["furnace_output_iron_plate"] == 1
+    assert observation["current_objective"] == "Collect furnace output"
+    assert not terminated
+    assert not truncated
+
+    observation, reward, terminated, truncated, info = env.step(
+        Action.TAKE_FURNACE_OUTPUT.value
+    )
+
+    assert observation["inventory"]["iron_plate"] == 1
+    assert observation["production_state"]["furnace_output_iron_plate"] == 0
+    assert observation["current_objective"] == "Task complete"
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["valid_action"] is True
+
+
+def test_furnace_input_collection_repeats_until_target_inventory_count() -> None:
+    env = MockFactorioEnv(
+        max_steps=30,
+        target_iron_plates=3,
+        starting_inventory={"stone_furnace": 1},
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+    )
+    observation, _ = env.reset()
+
+    actions = [Action.PLACE_STONE_FURNACE.value]
+    for _ in range(3):
+        actions.extend(
+            [
+                Action.MINE_IRON_ORE.value,
+                Action.INSERT_IRON_ORE_INTO_FURNACE.value,
+                Action.WAIT.value,
+                Action.WAIT.value,
+                Action.TAKE_FURNACE_OUTPUT.value,
+            ]
+        )
+
+    terminated = False
+    truncated = False
+    for action in actions:
+        observation, reward, terminated, truncated, info = env.step(action)
+
+    assert observation["inventory"]["iron_plate"] == 3
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert observation["production_state"]["furnace_output_iron_plate"] == 0
+    assert observation["current_objective"] == "Task complete"
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["valid_action"] is True
+
+
 def test_smelted_iron_plates_success_condition_focuses_objective() -> None:
     env = MockFactorioEnv(
         max_steps=10,
