@@ -12,7 +12,58 @@ burner miner output buffer into a furnace input buffer. The new
 exists, furnace input buffers are active, and a furnace is placed. This remains
 an abstract direct transfer, not an inserter, belt, or spatial layout model.
 
-Current best transfer specialist:
+Current best three-task miner-output/transfer policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-miner-transfer-multitask-50k.zip`
+- Tasks: `buffered-miner-output-ore`, `buffered-miner-collect-ore`,
+  `buffered-miner-transfer-plate`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `50000`
+
+Aggregate benchmark result:
+
+```text
+score:              0.999300
+success_rate:       1.000000
+avg_steps:          7.000000
+avg_reward:         13.263333
+invalid_rate:       0.000000
+eval_episodes:      60
+```
+
+Per-task benchmark results:
+
+```text
+buffered-miner-output-ore:     success_rate=1.000000 avg_steps=5.000000  invalid_rate=0.000000
+buffered-miner-collect-ore:    success_rate=1.000000 avg_steps=6.000000  invalid_rate=0.000000
+buffered-miner-transfer-plate: success_rate=1.000000 avg_steps=10.000000 invalid_rate=0.000000
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --tasks buffered-miner-output-ore,buffered-miner-collect-ore,buffered-miner-transfer-plate \
+  --total-timesteps 50000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-miner-transfer-multitask-50k.zip
+```
+
+Aggregate benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-miner-transfer-multitask-50k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-miner-output-ore,buffered-miner-collect-ore,buffered-miner-transfer-plate \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Transfer specialist reference:
 
 - Model path: `/tmp/opencode/maskable-ppo-buffered-miner-transfer-plate-50k.zip`
 - Task: `buffered-miner-transfer-plate`
