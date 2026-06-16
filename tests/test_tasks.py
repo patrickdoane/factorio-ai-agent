@@ -33,6 +33,7 @@ def test_task_registry_contains_named_plate_tasks() -> None:
     assert get_task("freeplay-burner-first-plate").required_burner_mined_iron_ore == 1
     assert get_task("bootstrap-craft-furnace").success_condition == "stone_furnace_crafted"
     assert get_task("bootstrap-smelt-plates").starting_inventory == (("stone_furnace", 1),)
+    assert get_task("bootstrap-smelt-plates").success_condition == "smelted_iron_plates"
     assert get_task("bootstrap-craft-drill").success_condition == "burner_mining_drill_crafted"
     assert (
         get_task("bootstrap-place-and-fuel-drill").success_condition

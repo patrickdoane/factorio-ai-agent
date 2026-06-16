@@ -32,6 +32,7 @@ Observation = dict[str, Any]
 ProductionState = dict[str, int]
 SuccessCondition = Literal[
     "iron_plates",
+    "smelted_iron_plates",
     "stone_furnace_crafted",
     "burner_mining_drill_crafted",
     "burner_mining_drill_fueled",
@@ -147,7 +148,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             "required_burner_mined_iron_ore": self.required_burner_mined_iron_ore,
         }
         self.step_count = 0
-        self.current_objective = "Mine resources"
+        self.current_objective = self._objective()
         return self._get_obs(), {}
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
@@ -324,6 +325,11 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             if self.placed_entities["burner_mining_drill"] < 1:
                 return "Place burner mining drill"
             return "Fuel burner miner"
+        if self.success_condition == "smelted_iron_plates":
+            remaining = self.target_iron_plates - self.inventory["iron_plate"]
+            if remaining == 1:
+                return "Smelt 1 more iron plate"
+            return f"Smelt {remaining} more iron plates"
         has_burner_miner = (
             self.inventory["burner_mining_drill"] >= 1
             or self.placed_entities["burner_mining_drill"] >= 1

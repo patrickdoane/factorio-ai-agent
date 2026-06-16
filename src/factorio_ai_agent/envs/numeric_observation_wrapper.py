@@ -34,6 +34,7 @@ PRODUCTION_STATE_KEYS = (
 )
 SUCCESS_CONDITIONS = (
     "iron_plates",
+    "smelted_iron_plates",
     "stone_furnace_crafted",
     "burner_mining_drill_crafted",
     "burner_mining_drill_fueled",

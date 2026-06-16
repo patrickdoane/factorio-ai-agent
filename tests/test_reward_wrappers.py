@@ -134,6 +134,23 @@ def test_burner_progress_rewards_useful_bootstrap_gears() -> None:
     assert info["progress_reward"] == 3.0
 
 
+def test_burner_progress_does_not_reward_gears_for_smelt_curriculum() -> None:
+    env = BurnerProgressRewardWrapper(
+        MockFactorioEnv(
+            max_steps=40,
+            target_iron_plates=9,
+            starting_inventory={"stone_furnace": 1, "iron_plate": 2},
+            success_condition="smelted_iron_plates",
+        )
+    )
+    env.reset(seed=1)
+
+    _, reward, _, _, info = env.step(int(Action.CRAFT_IRON_GEAR_WHEEL))
+
+    assert reward == pytest.approx(-0.01)
+    assert "progress_reward" not in info
+
+
 def test_burner_progress_rewards_bootstrap_second_furnace() -> None:
     env = BurnerProgressRewardWrapper(
         MockFactorioEnv(max_steps=40, require_burner_miner_for_success=True)

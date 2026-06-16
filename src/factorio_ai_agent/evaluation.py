@@ -157,6 +157,8 @@ def format_goal(target_iron_plates: int) -> str:
 def format_task_goal(task: TaskDefinition) -> str:
     if task.success_condition == "stone_furnace_crafted":
         return "Craft stone furnace"
+    if task.success_condition == "smelted_iron_plates":
+        return format_goal(task.target_iron_plates)
     if task.success_condition == "burner_mining_drill_crafted":
         return "Craft burner mining drill"
     if task.success_condition == "burner_mining_drill_fueled":

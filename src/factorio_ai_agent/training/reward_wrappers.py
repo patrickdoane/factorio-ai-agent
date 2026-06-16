@@ -281,6 +281,7 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
     def _crafted_useful_bootstrap_gear(self, action: int) -> bool:
         return (
             self._manual_bootstrap_allowed()
+            and self.env.success_condition != "smelted_iron_plates"
             and action == Action.CRAFT_IRON_GEAR_WHEEL.value
             and self.env.inventory["iron_gear_wheel"] <= 3
         )

@@ -8,6 +8,7 @@ from typing import Literal
 
 SuccessCondition = Literal[
     "iron_plates",
+    "smelted_iron_plates",
     "stone_furnace_crafted",
     "burner_mining_drill_crafted",
     "burner_mining_drill_fueled",
@@ -94,6 +95,7 @@ TASKS: dict[str, TaskDefinition] = {
         target_iron_plates=9,
         max_steps=40,
         starting_inventory=(("stone_furnace", 1),),
+        success_condition="smelted_iron_plates",
     ),
     "bootstrap-craft-drill": TaskDefinition(
         name="bootstrap-craft-drill",

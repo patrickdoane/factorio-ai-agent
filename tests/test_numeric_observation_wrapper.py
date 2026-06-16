@@ -10,7 +10,7 @@ def test_numeric_wrapper_returns_fixed_float_vector() -> None:
     observation, _ = env.reset()
 
     assert observation.dtype == np.float32
-    assert observation.shape == (20,)
+    assert observation.shape == (21,)
     assert env.observation_space.contains(observation)
 
 
@@ -40,6 +40,7 @@ def test_numeric_wrapper_tracks_inventory_and_step_count() -> None:
         0.0,
         0.0,
         0.0,
+        0.0,
         1.0,
     ]
 
@@ -51,7 +52,17 @@ def test_numeric_wrapper_encodes_success_condition() -> None:
 
     observation, _ = env.reset()
 
-    assert observation.tolist()[-5:-1] == [0.0, 0.0, 0.0, 1.0]
+    assert observation.tolist()[-6:-1] == [0.0, 0.0, 0.0, 0.0, 1.0]
+
+
+def test_numeric_wrapper_distinguishes_smelted_plate_success_condition() -> None:
+    env = NumericObservationWrapper(
+        MockFactorioEnv(success_condition="smelted_iron_plates")
+    )
+
+    observation, _ = env.reset()
+
+    assert observation.tolist()[-6:-1] == [0.0, 1.0, 0.0, 0.0, 0.0]
 
 
 def test_numeric_wrapper_exposes_action_masks() -> None:
