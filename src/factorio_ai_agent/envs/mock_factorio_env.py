@@ -160,7 +160,7 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         reward = -0.01
         info: dict[str, Any] = {"action": Action(action).name, "valid_action": True}
 
-        if not self._apply_action(Action(action)):
+        if action not in self.valid_actions() or not self._apply_action(Action(action)):
             reward -= 0.05
             info["valid_action"] = False
 
@@ -178,6 +178,12 @@ class MockFactorioEnv(gym.Env[Observation, int]):
 
     def valid_actions(self) -> list[int]:
         """Return actions that currently have an effect, plus WAIT."""
+        if self.success_condition == "smelted_iron_plates":
+            valid = [Action.MINE_IRON_ORE, Action.WAIT]
+            if self.inventory["stone_furnace"] >= 1:
+                valid.append(Action.PLACE_STONE_FURNACE)
+            return [action.value for action in valid]
+
         valid = [
             Action.MINE_IRON_ORE,
             Action.MINE_COAL,

@@ -369,11 +369,13 @@ def test_smelted_iron_plates_success_condition_focuses_objective() -> None:
 
     assert observation["current_objective"] == "Smelt 1 more iron plate"
     assert observation["success_condition"] == "smelted_iron_plates"
+    assert env.valid_actions() == [Action.MINE_IRON_ORE.value, Action.WAIT.value, Action.PLACE_STONE_FURNACE.value]
 
     for action in [Action.PLACE_STONE_FURNACE.value, Action.MINE_IRON_ORE.value, Action.WAIT.value]:
         observation, _, terminated, truncated, _ = env.step(action)
 
     assert observation["current_objective"] == "Smelt 1 more iron plate"
+    assert env.valid_actions() == [Action.MINE_IRON_ORE.value, Action.WAIT.value]
     assert not terminated
     assert not truncated
 
@@ -382,4 +384,24 @@ def test_smelted_iron_plates_success_condition_focuses_objective() -> None:
     assert observation["inventory"]["iron_plate"] == 1
     assert observation["current_objective"] == "Task complete"
     assert terminated
+    assert not truncated
+
+
+def test_smelted_iron_plates_rejects_off_task_actions() -> None:
+    env = MockFactorioEnv(
+        max_steps=10,
+        target_iron_plates=9,
+        starting_inventory={"stone_furnace": 1, "iron_plate": 2},
+        success_condition="smelted_iron_plates",
+    )
+    observation, _ = env.reset()
+
+    observation, reward, terminated, truncated, info = env.step(
+        Action.CRAFT_IRON_GEAR_WHEEL.value
+    )
+
+    assert observation["inventory"]["iron_plate"] == 2
+    assert reward == pytest.approx(-0.06)
+    assert info["valid_action"] is False
+    assert not terminated
     assert not truncated

@@ -147,8 +147,8 @@ def test_burner_progress_does_not_reward_gears_for_smelt_curriculum() -> None:
 
     _, reward, _, _, info = env.step(int(Action.CRAFT_IRON_GEAR_WHEEL))
 
-    assert reward == pytest.approx(-0.01)
-    assert "progress_reward" not in info
+    assert reward == pytest.approx(-0.56)
+    assert info["progress_reward"] == -0.5
 
 
 def test_burner_progress_rewards_bootstrap_second_furnace() -> None:
