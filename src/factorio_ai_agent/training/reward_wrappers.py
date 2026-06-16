@@ -158,8 +158,9 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
         previous_stone = self.env.inventory["stone"]
         observation, reward, terminated, truncated, info = self.env.step(action)
         previous_max_iron_plates = self._max_iron_plates
+        valid_action = bool(info.get("valid_action"))
         shaping_reward = self._progress_reward()
-        if self._needs_more_burner_ore() and info.get("valid_action"):
+        if self._needs_more_burner_ore() and valid_action:
             if action == Action.INSERT_COAL_FUEL.value and self._refuel_is_useful():
                 shaping_reward += self.BURNER_REFUEL_BONUS
             if action == Action.MINE_IRON_ORE.value and not self._manual_bootstrap_allowed():
@@ -172,40 +173,40 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             shaping_reward -= self.MANUAL_PLATE_REWARD
         if self._produced_excess_bootstrap_manual_plate(previous_max_iron_plates):
             shaping_reward -= self.MILESTONE_BONUSES["iron_plate"]
-        if self._crafted_useful_bootstrap_gear(action):
+        if valid_action and self._crafted_useful_bootstrap_gear(action):
             shaping_reward += self.BOOTSTRAP_GEAR_BONUS
-        if self._crafted_bootstrap_second_furnace(action):
+        if valid_action and self._crafted_bootstrap_second_furnace(action):
             shaping_reward += self.BOOTSTRAP_SECOND_FURNACE_BONUS
-        if self._crafted_extra_bootstrap_furnace(action):
+        if valid_action and self._crafted_extra_bootstrap_furnace(action):
             shaping_reward -= self.BOOTSTRAP_EXTRA_FURNACE_PENALTY
-        if self._placed_recipe_furnace_before_drill(action):
+        if valid_action and self._placed_recipe_furnace_before_drill(action):
             shaping_reward -= (
                 self.MILESTONE_BONUSES["placed_stone_furnace"]
                 + self.BOOTSTRAP_RECIPE_FURNACE_PLACEMENT_PENALTY
             )
-        if self._fuel_task_mined_coal(action, previous_coal):
+        if valid_action and self._fuel_task_mined_coal(action, previous_coal):
             shaping_reward += self.FUEL_TASK_COAL_BONUS
-        if self._fuel_task_placed_stone_furnace(action):
+        if valid_action and self._fuel_task_placed_stone_furnace(action):
             shaping_reward -= (
                 self.MILESTONE_BONUSES["placed_stone_furnace"]
                 + self.FUEL_TASK_STONE_FURNACE_DISTRACTION_PENALTY
             )
-        if self._fuel_task_mined_iron(action):
+        if valid_action and self._fuel_task_mined_iron(action):
             shaping_reward -= self.FUEL_TASK_IRON_DISTRACTION_PENALTY
         if self._fuel_task_produced_plate(previous_max_iron_plates):
             shaping_reward -= (
                 self.MILESTONE_BONUSES["iron_plate"]
                 + self.FUEL_TASK_PLATE_DISTRACTION_PENALTY
             )
-        if self._furnace_task_mined_useful_stone(action):
+        if valid_action and self._furnace_task_mined_useful_stone(action):
             shaping_reward += self.FURNACE_TASK_STONE_BONUS
-        if self._furnace_task_mined_excess_stone(action, previous_stone):
+        if valid_action and self._furnace_task_mined_excess_stone(action, previous_stone):
             shaping_reward -= self.FURNACE_TASK_EXCESS_STONE_PENALTY
-        if self._furnace_task_mined_distraction(action):
+        if valid_action and self._furnace_task_mined_distraction(action):
             shaping_reward -= self.FURNACE_TASK_RESOURCE_DISTRACTION_PENALTY
-        if self._crafted_unneeded_freeplay_gear(action):
+        if valid_action and self._crafted_unneeded_freeplay_gear(action):
             shaping_reward -= self.FREEPLAY_GEAR_PENALTY
-        if self._crafted_extra_bootstrap_gear(action):
+        if valid_action and self._crafted_extra_bootstrap_gear(action):
             shaping_reward -= self.BOOTSTRAP_EXTRA_GEAR_PENALTY
         if not info["valid_action"]:
             shaping_reward -= self.INVALID_ACTION_PENALTY

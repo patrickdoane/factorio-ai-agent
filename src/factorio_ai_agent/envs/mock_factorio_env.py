@@ -187,10 +187,11 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         valid = [
             Action.MINE_IRON_ORE,
             Action.MINE_COAL,
-            Action.MINE_STONE,
             Action.WAIT,
         ]
-        if self.inventory["stone"] >= 5:
+        if self._can_mine_stone():
+            valid.append(Action.MINE_STONE)
+        if self.inventory["stone"] >= 5 and self._can_craft_stone_furnace():
             valid.append(Action.CRAFT_STONE_FURNACE)
         if self.inventory["iron_plate"] >= 2:
             valid.append(Action.CRAFT_IRON_GEAR_WHEEL)
@@ -200,13 +201,40 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             and self.inventory["stone_furnace"] >= 1
         ):
             valid.append(Action.CRAFT_BURNER_MINING_DRILL)
-        if self.inventory["stone_furnace"] >= 1:
+        if self.inventory["stone_furnace"] >= 1 and self.placed_entities["stone_furnace"] == 0:
             valid.append(Action.PLACE_STONE_FURNACE)
         if self.inventory["burner_mining_drill"] >= 1:
             valid.append(Action.PLACE_BURNER_MINING_DRILL)
         if self.inventory["coal"] >= 1 and self.placed_entities["burner_mining_drill"] >= 1:
             valid.append(Action.INSERT_COAL_FUEL)
         return [action.value for action in valid]
+
+    def _can_craft_stone_furnace(self) -> bool:
+        if self.placed_entities["stone_furnace"] == 0:
+            return True
+        return (
+            self.success_condition == "iron_plates"
+            and self.require_burner_miner_for_success
+            and self.inventory["stone_furnace"] == 0
+            and self.inventory["burner_mining_drill"] == 0
+            and self.placed_entities["burner_mining_drill"] == 0
+        )
+
+    def _can_mine_stone(self) -> bool:
+        if not (
+            self.success_condition == "iron_plates"
+            and self.require_burner_miner_for_success
+        ):
+            return True
+        if (
+            self.inventory["burner_mining_drill"] > 0
+            or self.placed_entities["burner_mining_drill"] > 0
+        ):
+            return False
+        available_furnaces = (
+            self.inventory["stone_furnace"] + self.placed_entities["stone_furnace"]
+        )
+        return available_furnaces < 2
 
     def valid_action_mask(self) -> list[bool]:
         """Return a boolean mask of actions that are currently valid."""

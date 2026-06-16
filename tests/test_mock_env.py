@@ -145,6 +145,28 @@ def test_action_mask_allows_placement_and_fueling_when_ready() -> None:
     assert mask[Action.INSERT_COAL_FUEL.value]
 
 
+def test_full_bootstrap_mask_caps_placed_furnaces() -> None:
+    env = MockFactorioEnv(
+        require_burner_miner_for_success=True,
+        required_burner_mined_iron_ore=1,
+        starting_inventory={"stone_furnace": 1, "stone": 5},
+    )
+    env.reset()
+
+    env.step(Action.PLACE_STONE_FURNACE.value)
+    mask = env.valid_action_mask()
+
+    assert mask[Action.CRAFT_STONE_FURNACE.value]
+    assert not mask[Action.PLACE_STONE_FURNACE.value]
+
+    env.step(Action.CRAFT_STONE_FURNACE.value)
+    mask = env.valid_action_mask()
+
+    assert not mask[Action.MINE_STONE.value]
+    assert not mask[Action.CRAFT_STONE_FURNACE.value]
+    assert not mask[Action.PLACE_STONE_FURNACE.value]
+
+
 def test_unknown_action_name_raises_value_error() -> None:
     env = MockFactorioEnv()
 

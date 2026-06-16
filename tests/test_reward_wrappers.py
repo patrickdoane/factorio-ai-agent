@@ -180,8 +180,9 @@ def test_burner_progress_penalizes_extra_bootstrap_furnaces() -> None:
 
     _, reward, _, _, info = env.step(int(Action.CRAFT_STONE_FURNACE))
 
-    assert reward == pytest.approx(-5.01)
-    assert info["progress_reward"] == -5.0
+    assert reward == pytest.approx(-0.56)
+    assert info["progress_reward"] == pytest.approx(-0.5)
+    assert info["valid_action"] is False
 
 
 def test_burner_progress_penalizes_extra_bootstrap_gears() -> None:
