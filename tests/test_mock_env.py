@@ -507,6 +507,109 @@ def test_taking_empty_miner_output_is_invalid() -> None:
     assert not truncated
 
 
+def test_transfer_miner_output_to_furnace_input_buffer() -> None:
+    env = MockFactorioEnv(
+        max_steps=14,
+        target_iron_plates=1,
+        starting_inventory={"stone_furnace": 1, "burner_mining_drill": 1},
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+        use_miner_output_buffer=True,
+    )
+    observation, _ = env.reset()
+
+    assert observation["current_objective"] == "Place stone furnace"
+    assert not env.valid_action_mask()[Action.TRANSFER_MINER_OUTPUT_TO_FURNACE.value]
+
+    for action in [
+        Action.PLACE_STONE_FURNACE.value,
+        Action.PLACE_BURNER_MINING_DRILL.value,
+        Action.MINE_COAL.value,
+        Action.INSERT_COAL_FUEL.value,
+        Action.WAIT.value,
+        Action.WAIT.value,
+    ]:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["inventory"]["iron_ore"] == 0
+    assert observation["production_state"]["miner_output_iron_ore"] == 1
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert observation["current_objective"] == "Transfer miner output to furnace"
+    assert env.valid_actions() == [Action.TRANSFER_MINER_OUTPUT_TO_FURNACE.value]
+    assert not terminated
+    assert not truncated
+
+    observation, _, terminated, truncated, info = env.step(
+        Action.TRANSFER_MINER_OUTPUT_TO_FURNACE.value
+    )
+
+    assert info["valid_action"] is True
+    assert observation["production_state"]["miner_output_iron_ore"] == 0
+    assert observation["production_state"]["furnace_input_iron_ore"] == 1
+    assert observation["current_objective"] == "Smelt buffered furnace input"
+    assert env.valid_actions() == [Action.WAIT.value]
+    assert not terminated
+    assert not truncated
+
+    for action in [Action.WAIT.value, Action.WAIT.value]:
+        observation, _, terminated, truncated, _ = env.step(action)
+
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert observation["production_state"]["furnace_output_iron_plate"] == 1
+    assert observation["current_objective"] == "Collect furnace output"
+    assert env.valid_actions() == [Action.TAKE_FURNACE_OUTPUT.value]
+    assert not terminated
+    assert not truncated
+
+    observation, reward, terminated, truncated, info = env.step(
+        Action.TAKE_FURNACE_OUTPUT.value
+    )
+
+    assert observation["inventory"]["iron_plate"] == 1
+    assert observation["production_state"]["furnace_output_iron_plate"] == 0
+    assert observation["current_objective"] == "Task complete"
+    assert reward > 9.0
+    assert terminated
+    assert not truncated
+    assert info["valid_action"] is True
+
+
+def test_transfer_miner_output_requires_buffered_ore_and_placed_furnace() -> None:
+    env = MockFactorioEnv(
+        starting_inventory={"stone_furnace": 1},
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+        use_miner_output_buffer=True,
+    )
+    env.reset()
+
+    observation, reward, terminated, truncated, info = env.step(
+        Action.TRANSFER_MINER_OUTPUT_TO_FURNACE.value
+    )
+
+    assert observation["production_state"]["miner_output_iron_ore"] == 0
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert reward == pytest.approx(-0.06)
+    assert info["valid_action"] is False
+    assert not terminated
+    assert not truncated
+
+    env.production_state["miner_output_iron_ore"] = 1
+
+    observation, reward, terminated, truncated, info = env.step(
+        Action.TRANSFER_MINER_OUTPUT_TO_FURNACE.value
+    )
+
+    assert observation["production_state"]["miner_output_iron_ore"] == 1
+    assert observation["production_state"]["furnace_input_iron_ore"] == 0
+    assert reward == pytest.approx(-0.06)
+    assert info["valid_action"] is False
+    assert not terminated
+    assert not truncated
+
+
 def test_buffered_furnace_output_stores_plate_outside_inventory() -> None:
     env = MockFactorioEnv(
         max_steps=10,

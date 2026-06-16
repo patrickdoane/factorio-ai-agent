@@ -27,6 +27,7 @@ class Action(IntEnum):
     TAKE_FURNACE_OUTPUT = 10
     INSERT_IRON_ORE_INTO_FURNACE = 11
     TAKE_MINER_OUTPUT = 12
+    TRANSFER_MINER_OUTPUT_TO_FURNACE = 13
 
 
 Inventory = dict[str, int]
@@ -226,6 +227,23 @@ class MockFactorioEnv(gym.Env[Observation, int]):
                 and self.production_state["furnace_output_iron_plate"] >= 1
             ):
                 return [Action.TAKE_FURNACE_OUTPUT.value]
+            if self.use_miner_output_buffer:
+                if self._can_transfer_miner_output_to_furnace():
+                    return [Action.TRANSFER_MINER_OUTPUT_TO_FURNACE.value]
+                if self.production_state["furnace_input_iron_ore"] > 0 and self._can_wait():
+                    return [Action.WAIT.value]
+                valid: list[Action] = []
+                if self.inventory["stone_furnace"] >= 1:
+                    valid.append(Action.PLACE_STONE_FURNACE)
+                if self.inventory["burner_mining_drill"] >= 1:
+                    valid.append(Action.PLACE_BURNER_MINING_DRILL)
+                if self.inventory["coal"] < 1 and self.placed_entities["coal_fuel_inserted"] < 1:
+                    valid.append(Action.MINE_COAL)
+                if self.inventory["coal"] >= 1 and self.placed_entities["burner_mining_drill"] >= 1:
+                    valid.append(Action.INSERT_COAL_FUEL)
+                if self._can_wait():
+                    valid.append(Action.WAIT)
+                return [action.value for action in valid]
             valid = [Action.MINE_IRON_ORE]
             if self._can_insert_iron_ore_into_furnace():
                 valid.append(Action.INSERT_IRON_ORE_INTO_FURNACE)
@@ -268,6 +286,8 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             valid.append(Action.TAKE_MINER_OUTPUT)
         if self._can_insert_iron_ore_into_furnace():
             valid.append(Action.INSERT_IRON_ORE_INTO_FURNACE)
+        if self._can_transfer_miner_output_to_furnace():
+            valid.append(Action.TRANSFER_MINER_OUTPUT_TO_FURNACE)
         return [action.value for action in valid]
 
     def _can_craft_stone_furnace(self) -> bool:
@@ -326,6 +346,17 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         }:
             if not self.use_furnace_input_buffer:
                 return True
+            miner_can_advance = (
+                self.use_miner_output_buffer
+                and self.placed_entities["burner_mining_drill"] > 0
+                and self.placed_entities["coal_fuel_inserted"] > 0
+            )
+            furnace_can_advance = (
+                self.placed_entities["stone_furnace"] > 0
+                and self.production_state["furnace_input_iron_ore"] > 0
+            )
+            return miner_can_advance or furnace_can_advance
+        if self.use_furnace_input_buffer:
             return (
                 self.placed_entities["stone_furnace"] > 0
                 and self.production_state["furnace_input_iron_ore"] > 0
@@ -344,6 +375,14 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             and self.placed_entities["coal_fuel_inserted"] > 0
         )
         return furnace_can_advance or miner_can_advance
+
+    def _can_transfer_miner_output_to_furnace(self) -> bool:
+        return (
+            self.use_miner_output_buffer
+            and self.use_furnace_input_buffer
+            and self.placed_entities["stone_furnace"] > 0
+            and self.production_state["miner_output_iron_ore"] > 0
+        )
 
     def _can_insert_iron_ore_into_furnace(self) -> bool:
         return (
@@ -426,6 +465,12 @@ class MockFactorioEnv(gym.Env[Observation, int]):
                 return False
             self.production_state["miner_output_iron_ore"] -= 1
             self.inventory["iron_ore"] += 1
+            return True
+        if action == Action.TRANSFER_MINER_OUTPUT_TO_FURNACE:
+            if not self._can_transfer_miner_output_to_furnace():
+                return False
+            self.production_state["miner_output_iron_ore"] -= 1
+            self.production_state["furnace_input_iron_ore"] += 1
             return True
         return True
 
@@ -528,8 +573,18 @@ class MockFactorioEnv(gym.Env[Observation, int]):
                 return "Mine and collect 1 iron ore"
             return f"Mine and collect {remaining} iron ore"
         if self.success_condition == "buffered_iron_plates":
+            if self.use_miner_output_buffer and self.production_state["miner_output_iron_ore"] > 0:
+                return "Transfer miner output to furnace"
+            if self.use_miner_output_buffer and self.production_state["furnace_input_iron_ore"] > 0:
+                return "Smelt buffered furnace input"
             if self.use_furnace_input_buffer and self.inventory["iron_ore"] > 0:
                 return "Insert iron ore into furnace"
+            if self.use_miner_output_buffer and self.placed_entities["stone_furnace"] < 1:
+                return "Place stone furnace"
+            if self.use_miner_output_buffer and self.placed_entities["burner_mining_drill"] < 1:
+                return "Place burner mining drill"
+            if self.use_miner_output_buffer and self.placed_entities["coal_fuel_inserted"] < 1:
+                return "Fuel burner miner"
             remaining = self.target_iron_plates - self.production_state["furnace_output_iron_plate"]
             if remaining == 1:
                 return "Smelt 1 more buffered iron plate"
@@ -537,8 +592,18 @@ class MockFactorioEnv(gym.Env[Observation, int]):
         if self.success_condition == "collected_iron_plates":
             if self.production_state["furnace_output_iron_plate"] > 0:
                 return "Collect furnace output"
+            if self.use_miner_output_buffer and self.production_state["miner_output_iron_ore"] > 0:
+                return "Transfer miner output to furnace"
+            if self.use_miner_output_buffer and self.production_state["furnace_input_iron_ore"] > 0:
+                return "Smelt buffered furnace input"
             if self.use_furnace_input_buffer and self.inventory["iron_ore"] > 0:
                 return "Insert iron ore into furnace"
+            if self.use_miner_output_buffer and self.placed_entities["stone_furnace"] < 1:
+                return "Place stone furnace"
+            if self.use_miner_output_buffer and self.placed_entities["burner_mining_drill"] < 1:
+                return "Place burner mining drill"
+            if self.use_miner_output_buffer and self.placed_entities["coal_fuel_inserted"] < 1:
+                return "Fuel burner miner"
             remaining = self.target_iron_plates - self.inventory["iron_plate"]
             if remaining == 1:
                 return "Smelt and collect 1 more iron plate"

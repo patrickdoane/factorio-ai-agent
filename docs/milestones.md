@@ -4,6 +4,65 @@ This file records durable project milestones and the commands needed to reproduc
 them. Saved models under `/tmp/opencode` are local experiment artifacts; retrain
 them with the listed commands when a clean machine needs the same policy.
 
+## 2026-06-16: Miner Output To Furnace Input Transfer
+
+The machine-local buffer model now supports an explicit direct transfer from a
+burner miner output buffer into a furnace input buffer. The new
+`TRANSFER_MINER_OUTPUT_TO_FURNACE` action is enabled only when miner output ore
+exists, furnace input buffers are active, and a furnace is placed. This remains
+an abstract direct transfer, not an inserter, belt, or spatial layout model.
+
+Current best transfer specialist:
+
+- Model path: `/tmp/opencode/maskable-ppo-buffered-miner-transfer-plate-50k.zip`
+- Task: `buffered-miner-transfer-plate`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Training steps: `50000`
+
+Benchmark result:
+
+```text
+score:              0.999000
+success_rate:       1.000000
+avg_steps:          10.000000
+avg_reward:         19.900000
+invalid_rate:       0.000000
+eval_episodes:      20
+```
+
+Training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --task buffered-miner-transfer-plate \
+  --total-timesteps 50000 \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-buffered-miner-transfer-plate-50k.zip
+```
+
+Benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-buffered-miner-transfer-plate-50k.zip \
+  --model-algo maskable-ppo \
+  --tasks buffered-miner-transfer-plate \
+  --eval-episodes 20 \
+  --seed 1
+```
+
+Rollout quality note:
+
+- The learned policy follows the 10-step sequence: place furnace, place burner
+  miner, mine coal, insert fuel, wait, wait, transfer miner output to furnace,
+  wait, wait, take furnace output.
+- The task mask forces transfer when miner output is pending and forces furnace
+  waiting while transferred furnace input is pending, preventing valid but
+  off-task extra mining/refueling loops.
+
 ## 2026-06-16: Burner Miner Output Buffer Policies
 
 The machine-local buffer model now includes burner miner output. The

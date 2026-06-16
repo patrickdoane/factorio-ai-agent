@@ -105,6 +105,10 @@ smelting can advance.
 For burner miner output scenarios, use `buffered-miner-output-ore` or
 `buffered-miner-collect-ore`. These keep burner-mined ore in the miner output
 buffer until the collection variant explicitly takes it.
+For direct miner-to-furnace transfer, use `buffered-miner-transfer-plate`. This
+uses burner miner output, furnace input, and furnace output buffers; the policy
+must transfer ore from miner output into furnace input before smelting can
+advance.
 
 For Freeplay-style crashland starts, use `freeplay-burner-first-plate`,
 `freeplay-burner-three-plates`, or `freeplay-burner-ten-plates`. These tasks
@@ -212,6 +216,7 @@ factorio-ai research-benchmark --agent scripted --tasks first-plate,three-plates
 - Insert coal fuel.
 - Insert iron ore into a furnace input buffer.
 - Take burner miner output.
+- Transfer burner miner output into a furnace input buffer.
 - Take furnace output.
 - Wait for the miner and furnace production timers to produce iron plates.
 

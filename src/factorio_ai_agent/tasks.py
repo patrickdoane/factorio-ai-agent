@@ -179,6 +179,17 @@ TASKS: dict[str, TaskDefinition] = {
         success_condition="collected_iron_ore",
         use_miner_output_buffer=True,
     ),
+    "buffered-miner-transfer-plate": TaskDefinition(
+        name="buffered-miner-transfer-plate",
+        description="Transfer burner miner output directly into a furnace input buffer and collect a plate.",
+        target_iron_plates=1,
+        max_steps=14,
+        starting_inventory=(("stone_furnace", 1), ("burner_mining_drill", 1)),
+        success_condition="collected_iron_plates",
+        use_furnace_output_buffer=True,
+        use_furnace_input_buffer=True,
+        use_miner_output_buffer=True,
+    ),
     "bootstrap-craft-drill": TaskDefinition(
         name="bootstrap-craft-drill",
         description="Craft gears and a burner mining drill from prepared plates and furnace.",

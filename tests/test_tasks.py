@@ -22,6 +22,7 @@ def test_task_registry_contains_named_plate_tasks() -> None:
         "buffered-insert-collect-three-plates",
         "buffered-miner-output-ore",
         "buffered-miner-collect-ore",
+        "buffered-miner-transfer-plate",
         "bootstrap-craft-drill",
         "bootstrap-place-and-fuel-drill",
         "freeplay-burner-first-plate",
@@ -63,6 +64,10 @@ def test_task_registry_contains_named_plate_tasks() -> None:
     assert get_task("buffered-miner-output-ore").use_miner_output_buffer
     assert get_task("buffered-miner-collect-ore").success_condition == "collected_iron_ore"
     assert get_task("buffered-miner-collect-ore").use_miner_output_buffer
+    assert get_task("buffered-miner-transfer-plate").success_condition == "collected_iron_plates"
+    assert get_task("buffered-miner-transfer-plate").use_furnace_output_buffer
+    assert get_task("buffered-miner-transfer-plate").use_furnace_input_buffer
+    assert get_task("buffered-miner-transfer-plate").use_miner_output_buffer
     assert get_task("bootstrap-craft-drill").success_condition == "burner_mining_drill_crafted"
     assert (
         get_task("bootstrap-place-and-fuel-drill").success_condition
