@@ -186,8 +186,9 @@ class MockFactorioEnv(gym.Env[Observation, int]):
 
         valid = [
             Action.MINE_IRON_ORE,
-            Action.MINE_COAL,
         ]
+        if self._can_mine_coal():
+            valid.append(Action.MINE_COAL)
         if self._can_wait():
             valid.append(Action.WAIT)
         if self._can_mine_stone():
@@ -236,6 +237,22 @@ class MockFactorioEnv(gym.Env[Observation, int]):
             self.inventory["stone_furnace"] + self.placed_entities["stone_furnace"]
         )
         return available_furnaces < 2
+
+    def _can_mine_coal(self) -> bool:
+        if not (
+            self.success_condition == "iron_plates"
+            and self.require_burner_miner_for_success
+        ):
+            return True
+        if (
+            self.inventory["burner_mining_drill"] > 0
+            or self.placed_entities["burner_mining_drill"] > 0
+        ):
+            return True
+        available_fuel = (
+            self.inventory["coal"] + self.placed_entities["coal_fuel_inserted"]
+        )
+        return available_fuel < self.required_burner_mined_iron_ore
 
     def _can_wait(self) -> bool:
         if not (

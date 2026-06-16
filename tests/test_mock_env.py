@@ -185,6 +185,20 @@ def test_full_bootstrap_mask_allows_wait_only_for_active_production() -> None:
     assert env.valid_action_mask()[Action.WAIT.value]
 
 
+def test_full_bootstrap_mask_caps_coal_after_required_fuel() -> None:
+    env = MockFactorioEnv(
+        require_burner_miner_for_success=True,
+        required_burner_mined_iron_ore=1,
+    )
+    env.reset()
+
+    assert env.valid_action_mask()[Action.MINE_COAL.value]
+
+    env.step(Action.MINE_COAL.value)
+
+    assert not env.valid_action_mask()[Action.MINE_COAL.value]
+
+
 def test_unknown_action_name_raises_value_error() -> None:
     env = MockFactorioEnv()
 
