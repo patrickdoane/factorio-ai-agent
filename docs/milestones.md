@@ -4,6 +4,166 @@ This file records durable project milestones and the commands needed to reproduc
 them. Saved models under `/tmp/opencode` are local experiment artifacts; retrain
 them with the listed commands when a clean machine needs the same policy.
 
+## 2026-06-16: Empty-Inventory Burner Bootstrap
+
+The mock environment now has a learned policy that starts from empty inventory,
+crafts and places the first furnace, manually smelts the materials needed for a
+burner mining drill, places and fuels that drill, and completes the current
+empty-inventory `burner-*` plate tasks with burner-mined ore required for
+success.
+
+This milestone is still abstract: production uses inventory counters and
+wait-based timers, not spatial output directions, inserters, belts, or furnace
+output buffers. The important capability step is empty-inventory bootstrap, not
+logistics realism.
+
+Current best empty-bootstrap policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-burner-multitask-empty-bootstrap-150k.zip`
+- Base model: `/tmp/opencode/maskable-ppo-burner-first-from-smeltmask-coalcap-100k.zip`
+- Fine-tuning tasks: `burner-first-plate`, `burner-three-plates`, `burner-ten-plates`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Seed: `42`
+- Fine-tuning steps: `150000`
+
+Aggregate benchmark result:
+
+```text
+score:              0.993100
+success_rate:       1.000000
+avg_steps:          69.000000
+avg_reward:         89.310000
+invalid_rate:       0.000000
+eval_episodes:      30
+```
+
+Per-task benchmark results:
+
+```text
+burner-first-plate:  success_rate=1.000000 avg_steps=50.000000 invalid_rate=0.000000
+burner-three-plates: success_rate=1.000000 avg_steps=58.000000 invalid_rate=0.000000
+burner-ten-plates:   success_rate=1.000000 avg_steps=99.000000 invalid_rate=0.000000
+```
+
+Fine-tuning command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --tasks burner-first-plate,burner-three-plates,burner-ten-plates \
+  --load-path /tmp/opencode/maskable-ppo-burner-first-from-smeltmask-coalcap-100k.zip \
+  --total-timesteps 150000 \
+  --n-steps 128 \
+  --batch-size 64 \
+  --learning-rate 0.0003 \
+  --seed 42 \
+  --device cpu \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-burner-multitask-empty-bootstrap-150k.zip \
+  --eval-episodes 10
+```
+
+Aggregate benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-burner-multitask-empty-bootstrap-150k.zip \
+  --model-algo maskable-ppo \
+  --tasks burner-first-plate,burner-three-plates,burner-ten-plates \
+  --eval-episodes 10 \
+  --seed 42 \
+  --append-results
+```
+
+Rollout inspection command:
+
+```bash
+factorio-ai run-ppo \
+  --model-path /tmp/opencode/maskable-ppo-burner-multitask-empty-bootstrap-150k.zip \
+  --model-algo maskable-ppo \
+  --task burner-ten-plates \
+  --seed 42 \
+  --max-steps 180
+```
+
+The solved `burner-ten-plates` rollout completes in 99 steps with zero invalid
+actions. It mines stone, crafts and places a furnace, manually smelts enough
+plates for gears and drill crafting, crafts a second furnace for the burner-drill
+recipe, places and fuels the drill, then runs the burner miner until the
+burner-mined ore success requirement is met. The rollout is correct but not yet
+efficient: it manually smelts surplus plates before committing to the drill, so
+future optimization can target earlier drill construction and fewer manual-smelt
+cycles without changing the success semantics.
+
+The policy depended on explicit curriculum and task-aware masks. Important mask
+fixes closed valid but off-task loops: extra furnace placement, no-op waits, and
+excess pre-drill coal mining.
+
+The previous single-task empty-bootstrap policy solved only `burner-first-plate`
+and did not transfer to `burner-three-plates` or `burner-ten-plates`:
+
+- Model path: `/tmp/opencode/maskable-ppo-burner-first-from-smeltmask-coalcap-100k.zip`
+- Base model: `/tmp/opencode/maskable-ppo-bootstrap-curriculum-smeltmask-100k.zip`
+- Fine-tuning task: `burner-first-plate`
+- Benchmark: `success_rate=1.000000`, `avg_steps=51.000000`, `invalid_rate=0.000000`
+
+Solved bootstrap curriculum policy:
+
+- Model path: `/tmp/opencode/maskable-ppo-bootstrap-curriculum-smeltmask-100k.zip`
+- Tasks: `bootstrap-craft-furnace`, `bootstrap-smelt-plates`, `bootstrap-craft-drill`, `bootstrap-place-and-fuel-drill`
+- Algorithm: MaskablePPO
+- Reward shaping: `burner-progress`
+- Seed: `42`
+- Training steps: `100000`
+
+Aggregate curriculum benchmark result:
+
+```text
+score:              0.998975
+success_rate:       1.000000
+avg_steps:          10.250000
+avg_reward:         29.897500
+invalid_rate:       0.000000
+eval_episodes:      40
+```
+
+Curriculum training command:
+
+```bash
+factorio-ai train-ppo \
+  --algo maskable-ppo \
+  --tasks bootstrap-craft-furnace,bootstrap-smelt-plates,bootstrap-craft-drill,bootstrap-place-and-fuel-drill \
+  --total-timesteps 100000 \
+  --n-steps 128 \
+  --batch-size 64 \
+  --learning-rate 0.0003 \
+  --seed 42 \
+  --device cpu \
+  --reward-shaping burner-progress \
+  --save-path /tmp/opencode/maskable-ppo-bootstrap-curriculum-smeltmask-100k.zip \
+  --eval-episodes 10
+```
+
+Curriculum benchmark command:
+
+```bash
+factorio-ai research-benchmark \
+  --agent ppo \
+  --model-path /tmp/opencode/maskable-ppo-bootstrap-curriculum-smeltmask-100k.zip \
+  --model-algo maskable-ppo \
+  --tasks bootstrap-craft-furnace,bootstrap-smelt-plates,bootstrap-craft-drill,bootstrap-place-and-fuel-drill \
+  --eval-episodes 10 \
+  --seed 42 \
+  --append-results
+```
+
+Recommended next research target: improve empty-bootstrap efficiency on
+`burner-ten-plates` by encouraging earlier drill construction and fewer manual
+smelt cycles, or move the mock environment toward richer automation mechanics
+such as output buffers and simple inserter/belt abstractions.
+
 ## 2026-06-15: Abstract Freeplay Burner Policy
 
 The mock environment is still intentionally abstract: production is represented
