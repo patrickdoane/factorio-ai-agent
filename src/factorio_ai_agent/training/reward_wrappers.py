@@ -6,7 +6,7 @@ from typing import Any
 
 import gymnasium as gym
 
-from factorio_ai_agent.envs.mock_factorio_env import MockFactorioEnv, Observation
+from factorio_ai_agent.envs.mock_factorio_env import Action, MockFactorioEnv, Observation
 
 
 class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
@@ -38,6 +38,7 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
         self._achieved_milestones: set[str] = set()
         self._max_iron_plates = 0
         self._max_burner_mined_ore = 0
+        self._started_with_burner_miner = False
 
     @property
     def unwrapped_env(self) -> MockFactorioEnv:
@@ -53,9 +54,14 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
             for resource, target in self.RESOURCE_TARGETS.items()
         }
         self._achieved_milestones = set()
+        if self.env.inventory["stone_furnace"] > 0:
+            self._achieved_milestones.add("stone_furnace")
+        if self.env.inventory["burner_mining_drill"] > 0:
+            self._achieved_milestones.add("burner_mining_drill")
         self._max_iron_plates = self.env.inventory["iron_plate"]
         self._max_burner_mined_ore = self.env.production_state["burner_mined_iron_ore"]
         self._penalized_manual_plates = self.env.inventory["iron_plate"]
+        self._started_with_burner_miner = self.env.inventory["burner_mining_drill"] > 0
         return observation, info
 
     def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
@@ -116,8 +122,32 @@ class ProgressRewardWrapper(gym.Wrapper[Observation, int, Observation, int]):
 class BurnerProgressRewardWrapper(ProgressRewardWrapper):
     """Shape rewards for explicit burner-chain training tasks."""
 
+    MILESTONE_BONUSES = {
+        **ProgressRewardWrapper.MILESTONE_BONUSES,
+        "placed_stone_furnace": 6.00,
+        "placed_burner_mining_drill": 3.00,
+        "coal_fuel_inserted": 2.00,
+    }
     BURNER_ORE_BONUS = 2.00
+    FREEPLAY_GEAR_PENALTY = 2.00
+    INVALID_ACTION_PENALTY = 0.50
     MANUAL_PLATE_REWARD = 10.00
+
+    def step(self, action: int) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        previous_max_iron_plates = self._max_iron_plates
+        shaping_reward = self._progress_reward()
+        if self._produced_manual_plate_before_burner_ore(info):
+            shaping_reward -= self.MANUAL_PLATE_REWARD
+            if self.env.inventory["iron_plate"] > previous_max_iron_plates:
+                shaping_reward -= self.MILESTONE_BONUSES["iron_plate"]
+        if self._crafted_unneeded_freeplay_gear(action):
+            shaping_reward -= self.FREEPLAY_GEAR_PENALTY
+        if not info["valid_action"]:
+            shaping_reward -= self.INVALID_ACTION_PENALTY
+        if shaping_reward:
+            info["progress_reward"] = shaping_reward
+        return observation, reward + shaping_reward, terminated, truncated, info
 
     def _progress_reward(self) -> float:
         reward = super()._progress_reward()
@@ -129,15 +159,26 @@ class BurnerProgressRewardWrapper(ProgressRewardWrapper):
             ) * self.BURNER_ORE_BONUS
             self._max_burner_mined_ore = self.env.production_state["burner_mined_iron_ore"]
 
-        if (
-            self.env.require_burner_miner_for_success
-            and self.env.inventory["iron_plate"] > self._penalized_manual_plates
-            and self.env.production_state["burner_mined_iron_ore"] == 0
-        ):
-            manual_plates = self.env.inventory["iron_plate"] - self._penalized_manual_plates
-            reward -= manual_plates * (
-                self.MANUAL_PLATE_REWARD + self.MILESTONE_BONUSES["iron_plate"]
-            )
-            self._penalized_manual_plates = self.env.inventory["iron_plate"]
-
         return reward
+
+    def _produced_manual_plate_before_burner_ore(self, info: dict[str, Any]) -> bool:
+        return (
+            self.env.require_burner_miner_for_success
+            and bool(info.get("produced_iron_plate"))
+            and self.env.production_state["burner_mined_iron_ore"] == 0
+        )
+
+    def _crafted_unneeded_freeplay_gear(self, action: int) -> bool:
+        return (
+            self._started_with_burner_miner
+            and self.env.require_burner_miner_for_success
+            and action == Action.CRAFT_IRON_GEAR_WHEEL.value
+            and not self._burner_task_is_successful()
+        )
+
+    def _burner_task_is_successful(self) -> bool:
+        return (
+            self.env.inventory["iron_plate"] >= self.env.target_iron_plates
+            and self.env.production_state["burner_mined_iron_ore"]
+            >= self.env.required_burner_mined_iron_ore
+        )
